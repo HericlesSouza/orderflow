@@ -15,6 +15,8 @@ public sealed class InventoryItemTests
         Assert.NotEqual(Guid.Empty, inventoryItem.Id);
         Assert.Equal(productId, inventoryItem.ProductId);
         Assert.Equal(10, inventoryItem.Quantity);
+        Assert.Equal(0, inventoryItem.ReservedQuantity);
+        Assert.Equal(10, inventoryItem.AvailableQuantity);
         Assert.InRange(inventoryItem.CreatedAt, beforeCreation, afterCreation);
         Assert.InRange(inventoryItem.UpdatedAt, beforeCreation, afterCreation);
     }
@@ -40,31 +42,96 @@ public sealed class InventoryItemTests
     }
 
     [Fact]
-    public void Should_Update_Quantity_And_UpdatedAt_When_Quantity_Is_Valid()
+    public void Should_Increase_Stock_And_Update_UpdatedAt_When_Quantity_Is_Valid()
     {
         var inventoryItem = InventoryItem.Create(Guid.NewGuid(), 10);
         var beforeUpdate = DateTime.UtcNow;
 
-        inventoryItem.UpdateQuantity(25);
+        inventoryItem.IncreaseStock(5);
 
         var afterUpdate = DateTime.UtcNow;
 
-        Assert.Equal(25, inventoryItem.Quantity);
+        Assert.Equal(15, inventoryItem.Quantity);
+        Assert.Equal(15, inventoryItem.AvailableQuantity);
         Assert.InRange(inventoryItem.UpdatedAt, beforeUpdate, afterUpdate);
     }
 
     [Fact]
-    public void Should_Throw_ArgumentException_When_Updating_Quantity_With_Negative_Value()
+    public void Should_Throw_ArgumentException_When_Increasing_Stock_With_Zero_Quantity()
     {
         var inventoryItem = InventoryItem.Create(Guid.NewGuid(), 10);
         var originalQuantity = inventoryItem.Quantity;
         var originalUpdatedAt = inventoryItem.UpdatedAt;
-        var act = () => inventoryItem.UpdateQuantity(-1);
+        var act = () => inventoryItem.IncreaseStock(0);
 
         var exception = Assert.Throws<ArgumentException>(act);
 
-        Assert.Equal("InventoryItem quantity cannot be negative.", exception.Message);
+        Assert.Equal("Increase quantity must be greater than zero.", exception.Message);
         Assert.Equal(originalQuantity, inventoryItem.Quantity);
+        Assert.Equal(originalUpdatedAt, inventoryItem.UpdatedAt);
+    }
+
+    [Fact]
+    public void Should_Reserve_Quantity_And_Update_AvailableQuantity()
+    {
+        var inventoryItem = InventoryItem.Create(Guid.NewGuid(), 10);
+        var beforeUpdate = DateTime.UtcNow;
+
+        inventoryItem.Reserve(4);
+
+        var afterUpdate = DateTime.UtcNow;
+
+        Assert.Equal(10, inventoryItem.Quantity);
+        Assert.Equal(4, inventoryItem.ReservedQuantity);
+        Assert.Equal(6, inventoryItem.AvailableQuantity);
+        Assert.InRange(inventoryItem.UpdatedAt, beforeUpdate, afterUpdate);
+    }
+
+    [Fact]
+    public void Should_Throw_InvalidOperationException_When_Reserve_Exceeds_AvailableQuantity()
+    {
+        var inventoryItem = InventoryItem.Create(Guid.NewGuid(), 10);
+        var originalReservedQuantity = inventoryItem.ReservedQuantity;
+        var originalUpdatedAt = inventoryItem.UpdatedAt;
+        var act = () => inventoryItem.Reserve(11);
+
+        var exception = Assert.Throws<InvalidOperationException>(act);
+
+        Assert.Equal("Not enough available quantity to reserve.", exception.Message);
+        Assert.Equal(originalReservedQuantity, inventoryItem.ReservedQuantity);
+        Assert.Equal(originalUpdatedAt, inventoryItem.UpdatedAt);
+    }
+
+    [Fact]
+    public void Should_Release_Reserved_Quantity_And_Update_AvailableQuantity()
+    {
+        var inventoryItem = InventoryItem.Create(Guid.NewGuid(), 10);
+        inventoryItem.Reserve(4);
+        var beforeUpdate = DateTime.UtcNow;
+
+        inventoryItem.Release(3);
+
+        var afterUpdate = DateTime.UtcNow;
+
+        Assert.Equal(10, inventoryItem.Quantity);
+        Assert.Equal(1, inventoryItem.ReservedQuantity);
+        Assert.Equal(9, inventoryItem.AvailableQuantity);
+        Assert.InRange(inventoryItem.UpdatedAt, beforeUpdate, afterUpdate);
+    }
+
+    [Fact]
+    public void Should_Throw_InvalidOperationException_When_Releasing_More_Than_ReservedQuantity()
+    {
+        var inventoryItem = InventoryItem.Create(Guid.NewGuid(), 10);
+        inventoryItem.Reserve(2);
+        var originalReservedQuantity = inventoryItem.ReservedQuantity;
+        var originalUpdatedAt = inventoryItem.UpdatedAt;
+        var act = () => inventoryItem.Release(3);
+
+        var exception = Assert.Throws<InvalidOperationException>(act);
+
+        Assert.Equal("Not enough reserved quantity to release.", exception.Message);
+        Assert.Equal(originalReservedQuantity, inventoryItem.ReservedQuantity);
         Assert.Equal(originalUpdatedAt, inventoryItem.UpdatedAt);
     }
 }

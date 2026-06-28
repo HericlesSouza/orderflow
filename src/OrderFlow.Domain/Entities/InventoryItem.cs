@@ -5,6 +5,8 @@ public class InventoryItem
     public Guid Id { get; private set; }
     public Guid ProductId { get; private set; }
     public int Quantity { get; private set; }
+    public int ReservedQuantity { get; private set; }
+    public int AvailableQuantity => Quantity - ReservedQuantity;
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
 
@@ -17,6 +19,7 @@ public class InventoryItem
         Id = Guid.NewGuid();
         ProductId = productId;
         Quantity = quantity;
+        ReservedQuantity = 0;
     }
 
     public static InventoryItem Create(Guid productId, int quantity)
@@ -24,11 +27,36 @@ public class InventoryItem
         return new InventoryItem(productId, quantity);
     }
 
-    public void UpdateQuantity(int quantity)
+    public void Reserve(int quantity)
     {
-        Validate(ProductId, quantity);
+        if (quantity <= 0)
+            throw new ArgumentException("Reserve quantity must be greater than zero.");
 
-        Quantity = quantity;
+        if (quantity > AvailableQuantity)
+            throw new InvalidOperationException("Not enough available quantity to reserve.");
+
+        ReservedQuantity += quantity;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Release(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Release quantity must be greater than zero.");
+
+        if (quantity > ReservedQuantity)
+            throw new InvalidOperationException("Not enough reserved quantity to release.");
+
+        ReservedQuantity -= quantity;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void IncreaseStock(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Increase quantity must be greater than zero.");
+
+        Quantity += quantity;
         UpdatedAt = DateTime.UtcNow;
     }
 
