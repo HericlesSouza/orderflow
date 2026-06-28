@@ -1,0 +1,75 @@
+using OrderFlow.Domain.Enums;
+
+namespace OrderFlow.Domain.Entities;
+
+public class Order
+{
+    private readonly List<OrderItem> _orderItems = [];
+
+    public Guid Id { get; private set; }
+    public OrderStatus Status { get; private set; }
+    public decimal TotalAmount { get; private set; }
+    public IReadOnlyCollection<OrderItem> OrderItems => _orderItems.AsReadOnly();
+    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+    public DateTime? CancelledAt { get; private set; }
+
+    private Order() { }
+
+    private Order(IEnumerable<OrderItem> orderItems)
+    {
+        var items = orderItems?.ToList() ?? [];
+        Validate(items);
+
+        Id = Guid.NewGuid();
+        Status = OrderStatus.PendingPayment;
+        _orderItems.AddRange(items);
+        CalculateTotalAmount();
+    }
+
+    public static Order Create(IEnumerable<OrderItem> orderItems)
+    {
+        return new Order(orderItems);
+    }
+
+    public void Cancel()
+    {
+        if (Status == OrderStatus.Confirmed)
+            throw new InvalidOperationException("Confirmed order cannot be cancelled.");
+
+        if (Status == OrderStatus.Cancelled)
+            throw new InvalidOperationException("Order is already cancelled.");
+
+        if (Status == OrderStatus.PaymentRejected)
+            throw new InvalidOperationException("Payment rejected order cannot be cancelled.");
+
+        Status = OrderStatus.Cancelled;
+        CancelledAt = DateTime.UtcNow;
+    }
+
+    public void ConfirmPayment()
+    {
+        if (Status != OrderStatus.PendingPayment)
+            throw new InvalidOperationException("Only pending payment orders can be confirmed.");
+
+        Status = OrderStatus.Confirmed;
+    }
+
+    public void RejectPayment()
+    {
+        if (Status != OrderStatus.PendingPayment)
+            throw new InvalidOperationException("Only pending payment orders can be rejected.");
+
+        Status = OrderStatus.PaymentRejected;
+    }
+
+    private static void Validate(IReadOnlyCollection<OrderItem> orderItems)
+    {
+        if (orderItems.Count == 0)
+            throw new ArgumentException("Order must contain at least one item.");
+    }
+
+    private void CalculateTotalAmount()
+    {
+        TotalAmount = _orderItems.Sum(item => item.TotalPrice);
+    }
+}
