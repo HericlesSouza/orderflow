@@ -44,14 +44,14 @@ public sealed class ProductTests
     public void Should_Deactivate_Product_And_Update_UpdatedAt()
     {
         var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
-        var originalUpdatedAt = product.UpdatedAt;
-
-        Thread.Sleep(5);
+        var beforeUpdate = DateTime.UtcNow;
 
         product.Deactivate();
 
+        var afterUpdate = DateTime.UtcNow;
+
         Assert.False(product.IsActive);
-        Assert.True(product.UpdatedAt > originalUpdatedAt);
+        Assert.InRange(product.UpdatedAt, beforeUpdate, afterUpdate);
     }
 
     [Fact]
@@ -59,13 +59,13 @@ public sealed class ProductTests
     {
         var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
         product.Deactivate();
-        var updatedAtAfterDeactivate = product.UpdatedAt;
-
-        Thread.Sleep(5);
+        var beforeUpdate = DateTime.UtcNow;
 
         product.Activate();
 
+        var afterUpdate = DateTime.UtcNow;
+
         Assert.True(product.IsActive);
-        Assert.True(product.UpdatedAt > updatedAtAfterDeactivate);
+        Assert.InRange(product.UpdatedAt, beforeUpdate, afterUpdate);
     }
 }

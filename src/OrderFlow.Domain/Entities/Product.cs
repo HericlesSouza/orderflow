@@ -14,13 +14,13 @@ public class Product
 
     private Product(string name, decimal price, string description)
     {
+        Validate(name, price);
+
         Id = Guid.NewGuid();
         Name = name;
         Description = description;
         Price = price;
         IsActive = true;
-
-        Validate();
     }
 
     public static Product Create(string name, decimal price, string description)
@@ -40,12 +40,12 @@ public class Product
         UpdatedAt = DateTime.UtcNow;
     }
 
-    private void Validate()
+    private static void Validate(string name, decimal price)
     {
-        if (string.IsNullOrWhiteSpace(Name))
+        if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Product name cannot be empty.");
 
-        if (Price <= 0)
+        if (price <= 0)
             throw new ArgumentException("Product price must be greater than zero.");
     }
 }
