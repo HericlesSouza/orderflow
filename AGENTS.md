@@ -188,6 +188,7 @@ Evite testes que apenas repetem a implementacao. Teste comportamento observavel.
 ## Git e Pull Requests
 
 - Commits devem ser pequenos e descritivos.
+- Sempre utilize conventional commits e boas práticas.
 - Nao misture feature grande, refatoracao ampla e mudanca de documentacao sem necessidade.
 - Antes de finalizar uma tarefa, verifique o estado do Git quando fizer sentido.
 - Ao terminar uma tarefa, quando houver mudancas versionaveis, pergunte se devo criar um commit e aguarde autorizacao explicita antes de commitar.
