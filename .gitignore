@@ -1,0 +1,35 @@
+# Build outputs
+bin/
+obj/
+
+# Test results and coverage
+TestResults/
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+*.trx
+
+# IDE and editor files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Docker local overrides
+docker-compose.override.yml
