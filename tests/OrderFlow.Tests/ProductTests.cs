@@ -41,6 +41,16 @@ public sealed class ProductTests
     }
 
     [Fact]
+    public void Should_Throw_ArgumentException_When_Description_Is_Empty()
+    {
+        var act = () => Product.Create("Notebook", 3500.00m, "");
+
+        var exception = Assert.Throws<ArgumentException>(act);
+
+        Assert.Equal("Product description cannot be empty.", exception.Message);
+    }
+
+    [Fact]
     public void Should_Update_Product_When_Input_Is_Valid()
     {
         var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
@@ -88,6 +98,25 @@ public sealed class ProductTests
         var exception = Assert.Throws<ArgumentException>(act);
 
         Assert.Equal("Product price must be greater than zero.", exception.Message);
+        Assert.Equal(originalName, product.Name);
+        Assert.Equal(originalPrice, product.Price);
+        Assert.Equal(originalDescription, product.Description);
+        Assert.Equal(originalUpdatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public void Should_Throw_ArgumentException_When_Updating_Product_With_Invalid_Description()
+    {
+        var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
+        var originalName = product.Name;
+        var originalPrice = product.Price;
+        var originalDescription = product.Description;
+        var originalUpdatedAt = product.UpdatedAt;
+        var act = () => product.Update("Notebook Pro", 4200.00m, "");
+
+        var exception = Assert.Throws<ArgumentException>(act);
+
+        Assert.Equal("Product description cannot be empty.", exception.Message);
         Assert.Equal(originalName, product.Name);
         Assert.Equal(originalPrice, product.Price);
         Assert.Equal(originalDescription, product.Description);
