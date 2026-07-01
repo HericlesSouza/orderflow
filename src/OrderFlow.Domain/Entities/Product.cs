@@ -2,6 +2,9 @@ namespace OrderFlow.Domain.Entities;
 
 public class Product
 {
+    public const int NameMaxLength = 200;
+    public const int DescriptionMaxLength = 1000;
+
     public Guid Id { get; private set; }
     public string Name { get; private set; } = default!;
     public string Description { get; private set; } = default!;
@@ -55,8 +58,14 @@ public class Product
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Product name cannot be empty.");
 
+        if (name.Length > NameMaxLength)
+            throw new ArgumentException($"Product name cannot be longer than {NameMaxLength} characters.");
+
         if (string.IsNullOrWhiteSpace(description))
             throw new ArgumentException("Product description cannot be empty.");
+
+        if (description.Length > DescriptionMaxLength)
+            throw new ArgumentException($"Product description cannot be longer than {DescriptionMaxLength} characters.");
 
         if (price <= 0)
             throw new ArgumentException("Product price must be greater than zero.");

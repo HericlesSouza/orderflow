@@ -64,6 +64,34 @@ public sealed class CreateProductUseCaseTests
     }
 
     [Fact]
+    public async Task Should_Return_Failure_When_Name_Exceeds_Max_Length()
+    {
+        var repository = new FakeProductRepository();
+        var useCase = new CreateProductUseCase(repository);
+        var longName = new string('N', Product.NameMaxLength + 1);
+
+        var result = await useCase.ExecuteAsync(new CreateProductInput(longName, "Gaming notebook", 3500.00m));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal($"Product name cannot be longer than {Product.NameMaxLength} characters.", result.Error);
+        Assert.Empty(repository.AddedProducts);
+    }
+
+    [Fact]
+    public async Task Should_Return_Failure_When_Description_Exceeds_Max_Length()
+    {
+        var repository = new FakeProductRepository();
+        var useCase = new CreateProductUseCase(repository);
+        var longDescription = new string('D', Product.DescriptionMaxLength + 1);
+
+        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", longDescription, 3500.00m));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal($"Product description cannot be longer than {Product.DescriptionMaxLength} characters.", result.Error);
+        Assert.Empty(repository.AddedProducts);
+    }
+
+    [Fact]
     public async Task Should_Call_Repository_Once_When_Input_Is_Valid()
     {
         var repository = new FakeProductRepository();
