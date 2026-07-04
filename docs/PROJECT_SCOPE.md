@@ -283,7 +283,7 @@ OrderFlow.Tests
 
 | Projeto | Responsabilidade |
 |---|---|
-| OrderFlow.Api | Endpoints, configuração da aplicação, autenticação futura, Swagger |
+| OrderFlow.Api | Endpoints, configuração da aplicação, autenticação futura, OpenAPI + Scalar |
 | OrderFlow.Application | Casos de uso, DTOs, validações de aplicação |
 | OrderFlow.Domain | Entidades, regras de domínio, enums e comportamentos principais |
 | OrderFlow.Infrastructure | EF Core, PostgreSQL, repositórios, integrações externas |
@@ -300,7 +300,7 @@ OrderFlow.Tests
 - Configurar PostgreSQL com Docker Compose
 - Configurar EF Core
 - Configurar migrations
-- Configurar Swagger/OpenAPI
+- Configurar OpenAPI + Scalar
 - Criar endpoint de health check
 
 ### Fase 2 - Produtos

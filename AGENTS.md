@@ -4,7 +4,7 @@
 
 Este arquivo orienta agentes de IA trabalhando neste repositorio. Siga estas instrucoes ao implementar, revisar, testar ou refatorar codigo.
 
-Use este arquivo para entender como trabalhar no projeto. Use o `README.md` para apresentacao geral e o `PROJECT_SCOPE.md` para entender escopo, produto, funcionalidades e roadmap.
+Use este arquivo para entender como trabalhar no projeto. Use o `README.md` para apresentacao geral, o `docs/PROJECT_SCOPE.md` para entender escopo, produto, funcionalidades e roadmap, e o `docs/PROJECT_PROGRESS.md` para consultar o progresso real do projeto.
 
 ## Contexto do Projeto
 
@@ -88,7 +88,7 @@ Exemplo: antes de sugerir a versao do .NET, verifique a versao LTS atual e/ou ro
 
 Antes de implementar:
 
-- Leia o `README.md` e o `PROJECT_SCOPE.md` quando precisar entender o produto.
+- Leia o `README.md` e o `docs/PROJECT_SCOPE.md` quando precisar entender o produto.
 - Inspecione a estrutura existente antes de criar novos arquivos.
 - Prefira seguir padroes ja existentes no projeto.
 - Nao introduza bibliotecas novas sem uma justificativa clara.
@@ -210,10 +210,11 @@ Ao receber uma tarefa:
 6. Valide com comandos locais.
 7. Resuma o resultado de forma objetiva.
 
-Se encontrar uma decisao importante nao documentada, sugira atualizar o `PROJECT_SCOPE.md`, o `README.md` ou este `AGENTS.md`.
+Se encontrar uma decisao importante nao documentada, sugira atualizar o `docs/PROJECT_SCOPE.md`, o `docs/PROJECT_PROGRESS.md`, o `README.md` ou este `AGENTS.md`.
 
 ## Relacao Com Outros Arquivos
 
 - `README.md`: apresentacao do projeto, como rodar e visao para visitantes do repositorio.
-- `PROJECT_SCOPE.md`: escopo funcional, regras de negocio, roadmap e decisoes de produto.
+- `docs/PROJECT_SCOPE.md`: escopo funcional, regras de negocio, roadmap e decisoes de produto.
+- `docs/PROJECT_PROGRESS.md`: acompanhamento do progresso real, status por fase, proximos passos e bloqueios.
 - `AGENTS.md`: instrucoes operacionais para agentes de IA.
