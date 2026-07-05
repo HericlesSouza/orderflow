@@ -41,14 +41,43 @@ public class Product
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void ChangePrice(decimal newPrice)
+    {
+        if (newPrice <= 0)
+            throw new ArgumentException("Product price must be greater than zero.");
+
+        if (Price == newPrice)
+            return;
+
+        Price = newPrice;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetStatus(bool isActive)
+    {
+        if (isActive)
+        {
+            Activate();
+            return;
+        }
+
+        Deactivate();
+    }
+
     public void Activate()
     {
+        if (IsActive)
+            return;
+
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Deactivate()
     {
+        if (!IsActive)
+            return;
+
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
     }

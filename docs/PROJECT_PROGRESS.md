@@ -3,20 +3,20 @@
 ## Resumo Atual
 
 - Ultima atualizacao: 2026-07-04
-- Fase atual: Fase 2 - Produtos
-- Foco atual: concluir o catalogo de produtos antes de avancar para os primeiros fluxos verticais de Estoque e Pedidos
-- Proximo marco concreto: implementar `GET /products` para iniciar a consulta do catalogo completo
+- Fase atual: Fase 3 - Estoque
+- Foco atual: conectar o dominio de estoque ja iniciado com API, Application, Infrastructure e testes de integracao
+- Proximo marco concreto: implementar `POST /inventory/items` para registrar o primeiro estoque de produto
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, `POST /products` e `GET /products/{id}`
-  - Application implementada hoje: fluxos de criacao e consulta por id de produto
-  - Infrastructure implementada hoje: persistencia e consulta por id de `Product`
+  - API implementada hoje: `GET /health`, `POST /products`, `GET /products`, `GET /products/{id}`, `PATCH /products/{id}/price` e `PATCH /products/{id}/status`
+  - Application implementada hoje: fluxos de criacao, listagem, consulta por id e atualizacao de produto
+  - Infrastructure implementada hoje: persistencia, listagem, consulta por id e atualizacao de `Product`
   - Dominio ja possui bases de `InventoryItem`, `Order` e `OrderItem`, mas esses fluxos ainda nao chegaram na API, Application e Infrastructure
 
 ## Snapshot de Validacao
 
 - Build: validado durante `dotnet test OrderFlow.slnx`
-- Testes totais: 46 aprovados
-- Testes de integracao implementados hoje: criacao e consulta por id de produto
+- Testes totais: 70 aprovados
+- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto
 - Observacoes de ambiente:
   - `dotnet test OrderFlow.slnx` executado em 2026-07-04
   - restauracao, compilacao e execucao dos testes passaram
@@ -38,7 +38,7 @@ Status: `Concluido`
 
 ### Fase 2 - Produtos
 
-Status: `Em andamento`
+Status: `Concluido`
 
 - [x] Criar entidade `Product`
 - [x] Criar endpoint `POST /products`
@@ -47,10 +47,10 @@ Status: `Em andamento`
 - [x] Criar persistencia com EF Core para produto
 - [x] Criar testes unitarios do dominio de produto
 - [x] Criar testes de integracao para criacao de produto
-- [ ] Implementar `GET /products`
-- [ ] Implementar `GET /products/{id}`
-- [ ] Implementar `PATCH /products/{id}/price`
-- [ ] Implementar `PATCH /products/{id}/status`
+- [x] Implementar `GET /products`
+- [x] Implementar `GET /products/{id}`
+- [x] Implementar `PATCH /products/{id}/price`
+- [x] Implementar `PATCH /products/{id}/status`
 
 ### Fase 3 - Estoque
 
@@ -137,13 +137,15 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Implementar `GET /products` para fechar o catalogo basico de consulta
-- Implementar `PATCH /products/{id}/price` e `PATCH /products/{id}/status` para concluir a Fase 2
-- Iniciar Estoque depois da Fase 2, conectando o dominio ja pronto com API, Application, Infrastructure e testes
+- Integrar `InventoryItem` ao `OrderFlowDbContext` e preparar as migrations correspondentes
+- Criar `POST /inventory/items`, `POST /inventory/items/{productId}/increase` e `GET /inventory/items/{productId}`
+- Iniciar Estoque conectando o dominio ja pronto com API, Application, Infrastructure e testes
 - Criar o fluxo de criacao de Pedido validando produto ativo e estoque disponivel
 
 ## Historico de Atualizacoes
 
+- 2026-07-04 - Concluida a Fase 2 de Produtos com `GET /products`, `PATCH /products/{id}/price` e `PATCH /products/{id}/status`, alem de novos testes unitarios e de integracao.
+- 2026-07-04 - Atualizado o snapshot da suite para 70 testes aprovados apos finalizar o CRUD de Products.
 - 2026-07-04 - Criado o arquivo oficial de progresso e consolidado o estado real do repositorio com base em codigo, estrutura e testes.
 - 2026-07-04 - Reconciliado o progresso com o estado real do codigo: API/Application/Infrastructure ainda estao concentradas em Produtos, enquanto Estoque e Pedidos ja possuem base no dominio.
 - 2026-07-04 - Validado `dotnet test OrderFlow.slnx` com 46 testes aprovados e 0 falhas no ambiente atual.

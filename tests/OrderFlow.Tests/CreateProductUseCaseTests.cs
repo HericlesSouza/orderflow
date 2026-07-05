@@ -139,5 +139,15 @@ public sealed class CreateProductUseCaseTests
         {
             return Task.FromResult(AddedProducts.SingleOrDefault(product => product.Id == id));
         }
+
+        public Task<IReadOnlyList<Product>> ListAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<Product>>(AddedProducts);
+        }
+
+        public Task UpdateAsync(Product product, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

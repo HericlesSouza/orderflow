@@ -151,4 +151,72 @@ public sealed class ProductTests
         Assert.True(product.IsActive);
         Assert.InRange(product.UpdatedAt, beforeUpdate, afterUpdate);
     }
+
+    [Fact]
+    public void Should_Change_Product_Price_And_Update_UpdatedAt()
+    {
+        var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
+        var beforeUpdate = DateTime.UtcNow;
+
+        product.ChangePrice(4200.00m);
+
+        var afterUpdate = DateTime.UtcNow;
+
+        Assert.Equal(4200.00m, product.Price);
+        Assert.InRange(product.UpdatedAt, beforeUpdate, afterUpdate);
+    }
+
+    [Fact]
+    public void Should_Not_Update_UpdatedAt_When_Changing_To_Same_Price()
+    {
+        var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
+        var originalUpdatedAt = product.UpdatedAt;
+
+        product.ChangePrice(3500.00m);
+
+        Assert.Equal(3500.00m, product.Price);
+        Assert.Equal(originalUpdatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public void Should_Throw_ArgumentException_When_Changing_Product_Price_To_Invalid_Value()
+    {
+        var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
+        var originalPrice = product.Price;
+        var originalUpdatedAt = product.UpdatedAt;
+        var act = () => product.ChangePrice(0);
+
+        var exception = Assert.Throws<ArgumentException>(act);
+
+        Assert.Equal("Product price must be greater than zero.", exception.Message);
+        Assert.Equal(originalPrice, product.Price);
+        Assert.Equal(originalUpdatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public void Should_Set_Product_Status_To_Inactive_And_Update_UpdatedAt()
+    {
+        var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
+        var beforeUpdate = DateTime.UtcNow;
+
+        product.SetStatus(false);
+
+        var afterUpdate = DateTime.UtcNow;
+
+        Assert.False(product.IsActive);
+        Assert.InRange(product.UpdatedAt, beforeUpdate, afterUpdate);
+    }
+
+    [Fact]
+    public void Should_Not_Update_UpdatedAt_When_Setting_The_Same_Status()
+    {
+        var product = Product.Create("Notebook", 3500.00m, "Gaming notebook");
+        product.SetStatus(false);
+        var originalUpdatedAt = product.UpdatedAt;
+
+        product.SetStatus(false);
+
+        Assert.False(product.IsActive);
+        Assert.Equal(originalUpdatedAt, product.UpdatedAt);
+    }
 }

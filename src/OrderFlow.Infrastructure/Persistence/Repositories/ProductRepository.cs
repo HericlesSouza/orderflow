@@ -18,4 +18,18 @@ public class ProductRepository(OrderFlowDbContext dbContext) : IProductRepositor
             .AsNoTracking()
             .SingleOrDefaultAsync(product => product.Id == id, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Product>> ListAsync(CancellationToken cancellationToken)
+    {
+        return await dbContext.Products
+            .AsNoTracking()
+            .OrderByDescending(product => product.CreatedAt)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(Product product, CancellationToken cancellationToken)
+    {
+        dbContext.Products.Update(product);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }
