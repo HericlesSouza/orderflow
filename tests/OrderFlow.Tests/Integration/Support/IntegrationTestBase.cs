@@ -11,6 +11,8 @@ public abstract class IntegrationTestBase(ProductApiFactory factory) : IClassFix
 
     protected IServiceProvider Services => Factory.Services;
 
+    protected ProductTestDataSeeder ProductSeeder { get; } = new(factory.Services);
+
     public virtual Task InitializeAsync()
     {
         return Factory.ResetDatabaseAsync();

@@ -1,6 +1,6 @@
 using OrderFlow.Application.Products.UpdateStatus;
-using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
+using OrderFlow.Tests.Common.Fakes;
 
 namespace OrderFlow.Tests;
 
@@ -48,34 +48,5 @@ public sealed class UpdateProductStatusUseCaseTests
         Assert.NotNull(result.Value);
         Assert.True(result.Value!.IsActive);
         Assert.Equal(1, repository.UpdateAsyncCallCount);
-    }
-
-    private sealed class FakeProductRepository(List<Product>? products = null) : IProductRepository
-    {
-        private readonly List<Product> _products = products ?? [];
-
-        public int UpdateAsyncCallCount { get; private set; }
-
-        public Task AddAsync(Product product, CancellationToken cancellationToken)
-        {
-            _products.Add(product);
-            return Task.CompletedTask;
-        }
-
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(_products.SingleOrDefault(product => product.Id == id));
-        }
-
-        public Task<IReadOnlyList<Product>> ListAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult<IReadOnlyList<Product>>(_products);
-        }
-
-        public Task UpdateAsync(Product product, CancellationToken cancellationToken)
-        {
-            UpdateAsyncCallCount++;
-            return Task.CompletedTask;
-        }
     }
 }

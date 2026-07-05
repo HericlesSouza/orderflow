@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Api.Products;
-using OrderFlow.Api.Products.Create;
 using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.Products;
@@ -12,15 +11,10 @@ public sealed class GetProductByIdEndpointTests(ProductApiFactory factory) : Int
     [Fact]
     public async Task Should_Return_Product_When_Product_Exists()
     {
-        var createResponse = await Client.PostAsJsonAsync("/products", new CreateProductRequest(
+        var createdProduct = await ProductSeeder.CreateProductAsync(
             "Notebook",
             "Gaming notebook",
-            3500.00m));
-
-        createResponse.EnsureSuccessStatusCode();
-
-        var createdProduct = await createResponse.Content.ReadFromJsonAsync<ProductResponse>();
-        Assert.NotNull(createdProduct);
+            3500.00m);
 
         var getResponse = await Client.GetAsync($"/products/{createdProduct.Id}");
         var body = await getResponse.Content.ReadFromJsonAsync<ProductResponse>();

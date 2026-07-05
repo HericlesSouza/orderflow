@@ -1,6 +1,6 @@
 using OrderFlow.Application.Products.GetAll;
-using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
+using OrderFlow.Tests.Common.Fakes;
 
 namespace OrderFlow.Tests;
 
@@ -32,31 +32,5 @@ public sealed class GetProductsUseCaseTests
         Assert.Equal("Mouse", result[0].Name);
         Assert.Equal(firstProduct.Id, result[1].Id);
         Assert.Equal("Notebook", result[1].Name);
-    }
-
-    private sealed class FakeProductRepository(List<Product>? products = null) : IProductRepository
-    {
-        private readonly List<Product> _products = products ?? [];
-
-        public Task AddAsync(Product product, CancellationToken cancellationToken)
-        {
-            _products.Add(product);
-            return Task.CompletedTask;
-        }
-
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(_products.SingleOrDefault(product => product.Id == id));
-        }
-
-        public Task<IReadOnlyList<Product>> ListAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult<IReadOnlyList<Product>>(_products);
-        }
-
-        public Task UpdateAsync(Product product, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
     }
 }

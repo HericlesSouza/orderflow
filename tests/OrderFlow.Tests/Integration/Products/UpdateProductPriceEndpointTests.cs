@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Api.Products;
-using OrderFlow.Api.Products.Create;
 using OrderFlow.Api.Products.UpdatePrice;
 using OrderFlow.Infrastructure.Persistence;
 using OrderFlow.Tests.Integration.Support;
@@ -16,7 +15,7 @@ public sealed class UpdateProductPriceEndpointTests(ProductApiFactory factory) :
     [Fact]
     public async Task Should_Update_Product_Price_When_Request_Is_Valid()
     {
-        var createdProduct = await CreateProductAsync();
+        var createdProduct = await ProductSeeder.CreateProductAsync();
 
         var response = await Client.PatchAsJsonAsync(
             $"/products/{createdProduct.Id}/price",
@@ -33,7 +32,7 @@ public sealed class UpdateProductPriceEndpointTests(ProductApiFactory factory) :
     [Fact]
     public async Task Should_Persist_Product_Price_When_Request_Is_Valid()
     {
-        var createdProduct = await CreateProductAsync();
+        var createdProduct = await ProductSeeder.CreateProductAsync();
 
         var response = await Client.PatchAsJsonAsync(
             $"/products/{createdProduct.Id}/price",
@@ -51,7 +50,7 @@ public sealed class UpdateProductPriceEndpointTests(ProductApiFactory factory) :
     [Fact]
     public async Task Should_Return_BadRequest_When_Price_Is_Invalid()
     {
-        var createdProduct = await CreateProductAsync();
+        var createdProduct = await ProductSeeder.CreateProductAsync();
 
         var response = await Client.PatchAsJsonAsync(
             $"/products/{createdProduct.Id}/price",
@@ -76,18 +75,5 @@ public sealed class UpdateProductPriceEndpointTests(ProductApiFactory factory) :
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.NotNull(body);
         Assert.Equal("Product not found.", body.Title);
-    }
-
-    private async Task<ProductResponse> CreateProductAsync()
-    {
-        var response = await Client.PostAsJsonAsync("/products", new CreateProductRequest(
-            "Notebook",
-            "Gaming notebook",
-            3500.00m));
-
-        response.EnsureSuccessStatusCode();
-
-        var body = await response.Content.ReadFromJsonAsync<ProductResponse>();
-        return body!;
     }
 }

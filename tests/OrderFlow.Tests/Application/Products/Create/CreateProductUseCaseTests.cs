@@ -1,6 +1,6 @@
 using OrderFlow.Application.Products.Create;
-using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
+using OrderFlow.Tests.Common.Fakes;
 
 namespace OrderFlow.Tests;
 
@@ -17,7 +17,7 @@ public sealed class CreateProductUseCaseTests
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
-        Assert.Single(repository.AddedProducts);
+        Assert.Single(repository.Products);
         Assert.Equal("Notebook", result.Value!.Name);
         Assert.Equal("Gaming notebook", result.Value.Description);
         Assert.Equal(3500.00m, result.Value.Price);
@@ -34,7 +34,7 @@ public sealed class CreateProductUseCaseTests
 
         Assert.True(result.IsFailure);
         Assert.Equal("Product name cannot be empty.", result.Error);
-        Assert.Empty(repository.AddedProducts);
+        Assert.Empty(repository.Products);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class CreateProductUseCaseTests
 
         Assert.True(result.IsFailure);
         Assert.Equal("Product description cannot be empty.", result.Error);
-        Assert.Empty(repository.AddedProducts);
+        Assert.Empty(repository.Products);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public sealed class CreateProductUseCaseTests
 
         Assert.True(result.IsFailure);
         Assert.Equal("Product price must be greater than zero.", result.Error);
-        Assert.Empty(repository.AddedProducts);
+        Assert.Empty(repository.Products);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class CreateProductUseCaseTests
 
         Assert.True(result.IsFailure);
         Assert.Equal($"Product name cannot be longer than {Product.NameMaxLength} characters.", result.Error);
-        Assert.Empty(repository.AddedProducts);
+        Assert.Empty(repository.Products);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class CreateProductUseCaseTests
 
         Assert.True(result.IsFailure);
         Assert.Equal($"Product description cannot be longer than {Product.DescriptionMaxLength} characters.", result.Error);
-        Assert.Empty(repository.AddedProducts);
+        Assert.Empty(repository.Products);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class CreateProductUseCaseTests
 
         var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 3500.00m), CancellationToken.None);
 
-        var savedProduct = Assert.Single(repository.AddedProducts);
+        var savedProduct = Assert.Single(repository.Products);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
@@ -121,33 +121,5 @@ public sealed class CreateProductUseCaseTests
         Assert.Equal(savedProduct.IsActive, result.Value.IsActive);
         Assert.Equal(savedProduct.CreatedAt, result.Value.CreatedAt);
         Assert.Equal(savedProduct.UpdatedAt, result.Value.UpdatedAt);
-    }
-
-    private sealed class FakeProductRepository : IProductRepository
-    {
-        public List<Product> AddedProducts { get; } = [];
-        public int AddAsyncCallCount { get; private set; }
-
-        public Task AddAsync(Product product, CancellationToken cancellationToken)
-        {
-            AddAsyncCallCount++;
-            AddedProducts.Add(product);
-            return Task.CompletedTask;
-        }
-
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(AddedProducts.SingleOrDefault(product => product.Id == id));
-        }
-
-        public Task<IReadOnlyList<Product>> ListAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult<IReadOnlyList<Product>>(AddedProducts);
-        }
-
-        public Task UpdateAsync(Product product, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
     }
 }
