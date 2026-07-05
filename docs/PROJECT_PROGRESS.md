@@ -3,20 +3,24 @@
 ## Resumo Atual
 
 - Ultima atualizacao: 2026-07-04
-- Fase atual: Fase 2 - Produtos, com bases de Estoque e Pedidos ja iniciadas no dominio
-- Foco atual: concluir o fluxo principal do MVP a partir do que ja existe em Produtos e expandir para Estoque e Pedidos
-- Proximo marco concreto: implementar o primeiro fluxo vertical de Estoque na API, Application e Infrastructure
+- Fase atual: Fase 2 - Produtos
+- Foco atual: concluir o catalogo de produtos antes de avancar para os primeiros fluxos verticais de Estoque e Pedidos
+- Proximo marco concreto: implementar `GET /products` para iniciar a consulta do catalogo completo
+- Estado real da solucao:
+  - API implementada hoje: `GET /health`, `POST /products` e `GET /products/{id}`
+  - Application implementada hoje: fluxos de criacao e consulta por id de produto
+  - Infrastructure implementada hoje: persistencia e consulta por id de `Product`
+  - Dominio ja possui bases de `InventoryItem`, `Order` e `OrderItem`, mas esses fluxos ainda nao chegaram na API, Application e Infrastructure
 
 ## Snapshot de Validacao
 
-- Build: validado indiretamente durante `dotnet test OrderFlow.slnx`
-- Testes unitarios e de dominio: 39 aprovados
-- Testes de integracao: 5 falharam por indisponibilidade do Docker/Testcontainers, sem evidencia atual de falha funcional do codigo
+- Build: validado durante `dotnet test OrderFlow.slnx`
+- Testes totais: 46 aprovados
+- Testes de integracao implementados hoje: criacao e consulta por id de produto
 - Observacoes de ambiente:
   - `dotnet test OrderFlow.slnx` executado em 2026-07-04
-  - restauracao e compilacao passaram
-  - os testes de integracao dependem do Docker ativo e acessivel no ambiente local
-  - falha observada: conexao com `npipe://./pipe/docker_engine` indisponivel
+  - restauracao, compilacao e execucao dos testes passaram
+  - a suite ficou verde no ambiente atual
 
 ## Progresso por Fase
 
@@ -55,6 +59,7 @@ Status: `Em andamento`
 - [x] Criar entidade `InventoryItem`
 - [x] Implementar regras de aumento, reserva e liberacao no dominio
 - [x] Testar regras principais de estoque no dominio
+- [ ] Integrar estoque ao `OrderFlowDbContext` e as migrations
 - [ ] Criar endpoints de estoque
 - [ ] Implementar entrada de estoque na aplicacao
 - [ ] Criar persistencia com EF Core para estoque
@@ -69,6 +74,7 @@ Status: `Em andamento`
 - [x] Implementar calculo de total no dominio
 - [x] Implementar transicoes basicas de status no dominio
 - [x] Testar regras principais de pedido no dominio
+- [ ] Integrar pedidos ao `OrderFlowDbContext` e as migrations
 - [ ] Criar endpoint de criacao de pedido
 - [ ] Validar produtos e estoque no fluxo de aplicacao
 - [ ] Reservar estoque dentro da criacao do pedido
@@ -77,7 +83,7 @@ Status: `Em andamento`
 
 ### Fase 5 - Cancelamento
 
-Status: `Pendente`
+Status: `Em andamento`
 
 - [x] Iniciar regra de cancelamento no dominio
 - [ ] Implementar cancelamento de pedido no fluxo de aplicacao
@@ -93,11 +99,11 @@ Status: `Em andamento`
 - [x] Configurar Testcontainers com PostgreSQL
 - [x] Criar infraestrutura base para testes de integracao
 - [x] Testar criacao de produto
+- [x] Validar execucao com Docker ativo no ambiente
 - [ ] Testar entrada de estoque
 - [ ] Testar criacao de pedido
 - [ ] Testar pedido com estoque insuficiente
 - [ ] Testar cancelamento de pedido
-- [ ] Validar execucao com Docker ativo no ambiente
 
 ### Fase 7 - Pagamentos
 
@@ -131,12 +137,14 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Implementar o primeiro endpoint de Estoque com persistencia e testes
-- Adicionar listagem e consulta de Produtos para completar o catalogo basico
+- Implementar `GET /products` para fechar o catalogo basico de consulta
+- Implementar `PATCH /products/{id}/price` e `PATCH /products/{id}/status` para concluir a Fase 2
+- Iniciar Estoque depois da Fase 2, conectando o dominio ja pronto com API, Application, Infrastructure e testes
 - Criar o fluxo de criacao de Pedido validando produto ativo e estoque disponivel
-- Rodar novamente os testes de integracao com Docker ativo para consolidar o baseline
 
 ## Historico de Atualizacoes
 
 - 2026-07-04 - Criado o arquivo oficial de progresso e consolidado o estado real do repositorio com base em codigo, estrutura e testes.
-- 2026-07-04 - Validado que o projeto compila durante `dotnet test`; 39 testes passaram e 5 testes de integracao ficaram bloqueados por Docker indisponivel.
+- 2026-07-04 - Reconciliado o progresso com o estado real do codigo: API/Application/Infrastructure ainda estao concentradas em Produtos, enquanto Estoque e Pedidos ja possuem base no dominio.
+- 2026-07-04 - Validado `dotnet test OrderFlow.slnx` com 46 testes aprovados e 0 falhas no ambiente atual.
+- 2026-07-04 - Implementado `GET /products/{id}` com reaproveitamento de DTOs de saida, consulta no repositorio e testes de integracao cobrindo sucesso e `404`.
