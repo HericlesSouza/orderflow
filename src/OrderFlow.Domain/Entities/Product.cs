@@ -31,16 +31,6 @@ public class Product
         return new Product(name, price, description);
     }
 
-    public void Update(string name, decimal price, string description)
-    {
-        Validate(name, description, price);
-
-        Name = name;
-        Description = description;
-        Price = price;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
     public void ChangePrice(decimal newPrice)
     {
         if (newPrice <= 0)
