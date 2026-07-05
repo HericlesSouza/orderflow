@@ -1,4 +1,5 @@
 using OrderFlow.Application.Common.Results;
+using OrderFlow.Application.Products;
 using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
 
@@ -6,26 +7,19 @@ namespace OrderFlow.Application.Products.Create;
 
 public class CreateProductUseCase(IProductRepository productRepository)
 {
-    public async Task<Result<CreateProductOutput>> ExecuteAsync(CreateProductInput input)
+    public async Task<Result<ProductOutput>> ExecuteAsync(CreateProductInput input, CancellationToken cancellationToken)
     {
         try
         {
             var product = Product.Create(input.Name, input.Price, input.Description);
 
-            await productRepository.AddAsync(product);
+            await productRepository.AddAsync(product, cancellationToken);
 
-            return Result<CreateProductOutput>.Success(new CreateProductOutput(
-                product.Id,
-                product.Name,
-                product.Description,
-                product.Price,
-                product.IsActive,
-                product.CreatedAt,
-                product.UpdatedAt));
+            return Result<ProductOutput>.Success(ProductOutput.FromEntity(product));
         }
         catch (ArgumentException ex)
         {
-            return Result<CreateProductOutput>.Failure(ex.Message);
+            return Result<ProductOutput>.Failure(ex.Message);
         }
     }
 }

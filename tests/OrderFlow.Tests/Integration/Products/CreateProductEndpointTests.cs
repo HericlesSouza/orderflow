@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Api.Products.Create;
+using OrderFlow.Api.Products;
 using OrderFlow.Infrastructure.Persistence;
 using OrderFlow.Tests.Integration.Support;
 
@@ -19,7 +20,7 @@ public sealed class CreateProductEndpointTests(ProductApiFactory factory) : Inte
             "Gaming notebook",
             3500.00m));
 
-        var body = await response.Content.ReadFromJsonAsync<CreateProductResponse>();
+        var body = await response.Content.ReadFromJsonAsync<ProductResponse>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(body);

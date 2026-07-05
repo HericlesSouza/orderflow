@@ -2,7 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Api.Products.Create;
 using OrderFlow.Application.Products.Create;
-using OrderFlow.Domain.Entities;
+using OrderFlow.Application.Products.GetById;
 
 namespace OrderFlow.Api.Products;
 
@@ -17,9 +17,17 @@ public static class ProductEndpoints
             .WithName("CreateProduct")
             .WithSummary("Creates a product.")
             .WithDescription("Creates a new product in the catalog.")
-            .Produces<CreateProductResponse>(StatusCodes.Status201Created)
+            .Produces<ProductResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapGet("/{id:guid}", GetProductByIdAsync)
+            .WithName("GetProductById")
+            .WithSummary("Retrieves a product by ID.")
+            .WithDescription("Retrieves a product from the catalog by its unique identifier.")
+            .Produces<ProductResponse>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         return endpoints;
@@ -41,7 +49,7 @@ public static class ProductEndpoints
         var result = await useCase.ExecuteAsync(new CreateProductInput(
             request.Name,
             request.Description,
-            request.Price));
+            request.Price), cancellationToken);
 
         if (result.IsFailure)
         {
@@ -52,15 +60,27 @@ public static class ProductEndpoints
         }
 
         var value = result.Value!;
-        var response = new CreateProductResponse(
-            value.Id,
-            value.Name,
-            value.Description,
-            value.Price,
-            value.IsActive,
-            value.CreatedAt,
-            value.UpdatedAt);
+        var response = ProductResponse.FromOutput(value);
 
         return Results.Created($"/products/{value.Id}", response);
+    }
+
+    private static async Task<IResult> GetProductByIdAsync(
+        [FromRoute] Guid id,
+        GetProductByIdUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.ExecuteAsync(id, cancellationToken);
+
+        if (result is null)
+        {
+            return Results.Problem(
+                title: "Product not found.",
+                statusCode: StatusCodes.Status404NotFound);
+        }
+
+        var response = ProductResponse.FromOutput(result);
+
+        return Results.Ok(response);
     }
 }

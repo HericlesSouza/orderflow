@@ -13,7 +13,7 @@ public sealed class CreateProductUseCaseTests
         var useCase = new CreateProductUseCase(repository);
         var input = new CreateProductInput("Notebook", "Gaming notebook", 3500.00m);
 
-        var result = await useCase.ExecuteAsync(input);
+        var result = await useCase.ExecuteAsync(input, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
@@ -30,7 +30,7 @@ public sealed class CreateProductUseCaseTests
         var repository = new FakeProductRepository();
         var useCase = new CreateProductUseCase(repository);
 
-        var result = await useCase.ExecuteAsync(new CreateProductInput("", "Gaming notebook", 3500.00m));
+        var result = await useCase.ExecuteAsync(new CreateProductInput("", "Gaming notebook", 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal("Product name cannot be empty.", result.Error);
@@ -43,7 +43,7 @@ public sealed class CreateProductUseCaseTests
         var repository = new FakeProductRepository();
         var useCase = new CreateProductUseCase(repository);
 
-        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "", 3500.00m));
+        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "", 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal("Product description cannot be empty.", result.Error);
@@ -56,7 +56,7 @@ public sealed class CreateProductUseCaseTests
         var repository = new FakeProductRepository();
         var useCase = new CreateProductUseCase(repository);
 
-        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 0));
+        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 0), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal("Product price must be greater than zero.", result.Error);
@@ -70,7 +70,7 @@ public sealed class CreateProductUseCaseTests
         var useCase = new CreateProductUseCase(repository);
         var longName = new string('N', Product.NameMaxLength + 1);
 
-        var result = await useCase.ExecuteAsync(new CreateProductInput(longName, "Gaming notebook", 3500.00m));
+        var result = await useCase.ExecuteAsync(new CreateProductInput(longName, "Gaming notebook", 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal($"Product name cannot be longer than {Product.NameMaxLength} characters.", result.Error);
@@ -84,7 +84,7 @@ public sealed class CreateProductUseCaseTests
         var useCase = new CreateProductUseCase(repository);
         var longDescription = new string('D', Product.DescriptionMaxLength + 1);
 
-        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", longDescription, 3500.00m));
+        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", longDescription, 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal($"Product description cannot be longer than {Product.DescriptionMaxLength} characters.", result.Error);
@@ -97,7 +97,7 @@ public sealed class CreateProductUseCaseTests
         var repository = new FakeProductRepository();
         var useCase = new CreateProductUseCase(repository);
 
-        await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 3500.00m));
+        await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 3500.00m), CancellationToken.None);
 
         Assert.Equal(1, repository.AddAsyncCallCount);
     }
@@ -108,7 +108,7 @@ public sealed class CreateProductUseCaseTests
         var repository = new FakeProductRepository();
         var useCase = new CreateProductUseCase(repository);
 
-        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 3500.00m));
+        var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 3500.00m), CancellationToken.None);
 
         var savedProduct = Assert.Single(repository.AddedProducts);
 
@@ -128,11 +128,16 @@ public sealed class CreateProductUseCaseTests
         public List<Product> AddedProducts { get; } = [];
         public int AddAsyncCallCount { get; private set; }
 
-        public Task AddAsync(Product product)
+        public Task AddAsync(Product product, CancellationToken cancellationToken)
         {
             AddAsyncCallCount++;
             AddedProducts.Add(product);
             return Task.CompletedTask;
+        }
+
+        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(AddedProducts.SingleOrDefault(product => product.Id == id));
         }
     }
 }
