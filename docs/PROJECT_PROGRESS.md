@@ -15,12 +15,12 @@
 ## Snapshot de Validacao
 
 - Build: validado durante `dotnet test OrderFlow.slnx`
-- Testes totais: 70 aprovados
-- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto
+- Testes totais: 66 aprovados
+- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto, com seed direto no banco para isolar os cenarios de leitura e update
 - Observacoes de ambiente:
   - `dotnet test OrderFlow.slnx` executado em 2026-07-04
   - restauracao, compilacao e execucao dos testes passaram
-  - a suite ficou verde no ambiente atual
+  - a suite ficou verde no ambiente atual apos a reorganizacao dos testes por camada e feature
 
 ## Progresso por Fase
 
@@ -144,6 +144,8 @@ Status: `Pendente`
 
 ## Historico de Atualizacoes
 
+- 2026-07-04 - Refatorada a suite de testes de Products com organizacao por camada/feature, `FakeProductRepository` compartilhado e seed direto no banco nos testes de integracao.
+- 2026-07-04 - Simplificada a API de mutacao de `Product` com remocao do metodo generico `Update(...)`; o snapshot da suite passou a refletir 66 testes aprovados.
 - 2026-07-04 - Concluida a Fase 2 de Produtos com `GET /products`, `PATCH /products/{id}/price` e `PATCH /products/{id}/status`, alem de novos testes unitarios e de integracao.
 - 2026-07-04 - Atualizado o snapshot da suite para 70 testes aprovados apos finalizar o CRUD de Products.
 - 2026-07-04 - Criado o arquivo oficial de progresso e consolidado o estado real do repositorio com base em codigo, estrutura e testes.
