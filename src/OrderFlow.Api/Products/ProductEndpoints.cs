@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.Products.Create;
 using OrderFlow.Api.Products.UpdatePrice;
 using OrderFlow.Api.Products.UpdateStatus;
@@ -85,10 +86,7 @@ public static class ProductEndpoints
 
         if (result.IsFailure)
         {
-            return Results.Problem(
-                title: "Invalid product data.",
-                detail: result.Error,
-                statusCode: StatusCodes.Status400BadRequest);
+            return result.ToProblem();
         }
 
         var value = result.Value!;
@@ -146,7 +144,7 @@ public static class ProductEndpoints
 
         if (result.IsFailure)
         {
-            return MapProductUpdateFailure(result.Error!);
+            return result.ToProblem();
         }
 
         return Results.Ok(ProductResponse.FromOutput(result.Value!));
@@ -170,24 +168,9 @@ public static class ProductEndpoints
 
         if (result.IsFailure)
         {
-            return MapProductUpdateFailure(result.Error!);
+            return result.ToProblem();
         }
 
         return Results.Ok(ProductResponse.FromOutput(result.Value!));
-    }
-
-    private static IResult MapProductUpdateFailure(string error)
-    {
-        if (error == "Product not found.")
-        {
-            return Results.Problem(
-                title: "Product not found.",
-                statusCode: StatusCodes.Status404NotFound);
-        }
-
-        return Results.Problem(
-            title: "Invalid product data.",
-            detail: error,
-            statusCode: StatusCodes.Status400BadRequest);
     }
 }

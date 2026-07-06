@@ -1,13 +1,15 @@
+using OrderFlow.Application.Common.Errors;
+
 namespace OrderFlow.Application.Common.Results;
 
 public class Result
 {
-    protected Result(bool isSuccess, string? error)
+    protected Result(bool isSuccess, AppError? error)
     {
         if (isSuccess && error is not null)
             throw new InvalidOperationException("A successful result cannot contain an error.");
 
-        if (!isSuccess && string.IsNullOrWhiteSpace(error))
+        if (!isSuccess && error is null)
             throw new InvalidOperationException("A failed result must contain an error.");
 
         IsSuccess = isSuccess;
@@ -16,15 +18,15 @@ public class Result
 
     public bool IsSuccess { get; }
     public bool IsFailure => !IsSuccess;
-    public string? Error { get; }
+    public AppError? Error { get; }
 
     public static Result Success() => new(true, null);
-    public static Result Failure(string error) => new(false, error);
+    public static Result Failure(AppError error) => new(false, error);
 }
 
 public sealed class Result<T> : Result
 {
-    private Result(bool isSuccess, T? value, string? error)
+    private Result(bool isSuccess, T? value, AppError? error)
         : base(isSuccess, error)
     {
         Value = value;
@@ -33,5 +35,5 @@ public sealed class Result<T> : Result
     public T? Value { get; }
 
     public static Result<T> Success(T value) => new(true, value, null);
-    public static new Result<T> Failure(string error) => new(false, default, error);
+    public static new Result<T> Failure(AppError error) => new(false, default, error);
 }

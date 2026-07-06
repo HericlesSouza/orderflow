@@ -1,4 +1,6 @@
+using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Products.UpdateStatus;
+using OrderFlow.Application.Products;
 using OrderFlow.Domain.Entities;
 using OrderFlow.Tests.Common.Fakes;
 
@@ -30,7 +32,10 @@ public sealed class UpdateProductStatusUseCaseTests
         var result = await useCase.ExecuteAsync(new UpdateProductStatusInput(Guid.NewGuid(), false), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Product not found.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.not_found", result.Error.Code);
+        Assert.Equal(AppErrorType.NotFound, result.Error.Type);
+        Assert.Equal("Product not found.", result.Error.Message);
         Assert.Equal(0, repository.UpdateAsyncCallCount);
     }
 

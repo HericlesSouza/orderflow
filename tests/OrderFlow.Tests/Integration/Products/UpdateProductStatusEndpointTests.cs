@@ -94,6 +94,7 @@ public sealed class UpdateProductStatusEndpointTests(ProductApiFactory factory) 
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.NotNull(body);
-        Assert.Equal("Product not found.", body.Title);
+        Assert.Equal("Resource not found.", body.Title);
+        Assert.Equal("Product not found.", body.Detail);
     }
 }

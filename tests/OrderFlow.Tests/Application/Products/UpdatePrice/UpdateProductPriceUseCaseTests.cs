@@ -1,4 +1,6 @@
+using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Products.UpdatePrice;
+using OrderFlow.Application.Products;
 using OrderFlow.Domain.Entities;
 using OrderFlow.Tests.Common.Fakes;
 
@@ -30,7 +32,10 @@ public sealed class UpdateProductPriceUseCaseTests
         var result = await useCase.ExecuteAsync(new UpdateProductPriceInput(Guid.NewGuid(), 4200.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Product not found.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.not_found", result.Error.Code);
+        Assert.Equal(AppErrorType.NotFound, result.Error.Type);
+        Assert.Equal("Product not found.", result.Error.Message);
         Assert.Equal(0, repository.UpdateAsyncCallCount);
     }
 
@@ -44,7 +49,10 @@ public sealed class UpdateProductPriceUseCaseTests
         var result = await useCase.ExecuteAsync(new UpdateProductPriceInput(product.Id, 0), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Product price must be greater than zero.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.invalid", result.Error.Code);
+        Assert.Equal(AppErrorType.Validation, result.Error.Type);
+        Assert.Equal("Product price must be greater than zero.", result.Error.Message);
         Assert.Equal(0, repository.UpdateAsyncCallCount);
     }
 }

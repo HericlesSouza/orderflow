@@ -1,5 +1,5 @@
+using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Common.Results;
-using OrderFlow.Application.Products;
 using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
 
@@ -19,7 +19,7 @@ public class CreateProductUseCase(IProductRepository productRepository)
         }
         catch (ArgumentException ex)
         {
-            return Result<ProductOutput>.Failure(ex.Message);
+            return Result<ProductOutput>.Failure(AppError.Validation("product.invalid", ex.Message));
         }
     }
 }

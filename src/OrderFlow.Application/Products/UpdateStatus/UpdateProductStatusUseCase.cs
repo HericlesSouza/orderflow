@@ -1,3 +1,4 @@
+using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Common.Results;
 using OrderFlow.Application.Products;
 using OrderFlow.Application.Repositories;
@@ -11,7 +12,7 @@ public class UpdateProductStatusUseCase(IProductRepository productRepository)
         var product = await productRepository.GetByIdAsync(input.ProductId, cancellationToken);
 
         if (product is null)
-            return Result<ProductOutput>.Failure("Product not found.");
+            return Result<ProductOutput>.Failure(AppError.NotFound("product.not_found", "Product not found."));
 
         product.SetStatus(input.IsActive);
 

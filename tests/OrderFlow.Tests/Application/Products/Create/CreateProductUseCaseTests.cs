@@ -1,4 +1,6 @@
+using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Products.Create;
+using OrderFlow.Application.Products;
 using OrderFlow.Domain.Entities;
 using OrderFlow.Tests.Common.Fakes;
 
@@ -33,7 +35,10 @@ public sealed class CreateProductUseCaseTests
         var result = await useCase.ExecuteAsync(new CreateProductInput("", "Gaming notebook", 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Product name cannot be empty.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.invalid", result.Error.Code);
+        Assert.Equal(AppErrorType.Validation, result.Error.Type);
+        Assert.Equal("Product name cannot be empty.", result.Error.Message);
         Assert.Empty(repository.Products);
     }
 
@@ -46,7 +51,10 @@ public sealed class CreateProductUseCaseTests
         var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "", 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Product description cannot be empty.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.invalid", result.Error.Code);
+        Assert.Equal(AppErrorType.Validation, result.Error.Type);
+        Assert.Equal("Product description cannot be empty.", result.Error.Message);
         Assert.Empty(repository.Products);
     }
 
@@ -59,7 +67,10 @@ public sealed class CreateProductUseCaseTests
         var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", "Gaming notebook", 0), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Product price must be greater than zero.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.invalid", result.Error.Code);
+        Assert.Equal(AppErrorType.Validation, result.Error.Type);
+        Assert.Equal("Product price must be greater than zero.", result.Error.Message);
         Assert.Empty(repository.Products);
     }
 
@@ -73,7 +84,10 @@ public sealed class CreateProductUseCaseTests
         var result = await useCase.ExecuteAsync(new CreateProductInput(longName, "Gaming notebook", 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal($"Product name cannot be longer than {Product.NameMaxLength} characters.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.invalid", result.Error.Code);
+        Assert.Equal(AppErrorType.Validation, result.Error.Type);
+        Assert.Equal($"Product name cannot be longer than {Product.NameMaxLength} characters.", result.Error.Message);
         Assert.Empty(repository.Products);
     }
 
@@ -87,7 +101,10 @@ public sealed class CreateProductUseCaseTests
         var result = await useCase.ExecuteAsync(new CreateProductInput("Notebook", longDescription, 3500.00m), CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal($"Product description cannot be longer than {Product.DescriptionMaxLength} characters.", result.Error);
+        Assert.NotNull(result.Error);
+        Assert.Equal("product.invalid", result.Error.Code);
+        Assert.Equal(AppErrorType.Validation, result.Error.Type);
+        Assert.Equal($"Product description cannot be longer than {Product.DescriptionMaxLength} characters.", result.Error.Message);
         Assert.Empty(repository.Products);
     }
 
