@@ -102,14 +102,12 @@ public static class ProductEndpoints
     {
         var result = await useCase.ExecuteAsync(id, cancellationToken);
 
-        if (result is null)
+        if (result.IsFailure)
         {
-            return Results.Problem(
-                title: "Product not found.",
-                statusCode: StatusCodes.Status404NotFound);
+            return result.ToProblem();
         }
 
-        var response = ProductResponse.FromOutput(result);
+        var response = ProductResponse.FromOutput(result.Value!);
 
         return Results.Ok(response);
     }
