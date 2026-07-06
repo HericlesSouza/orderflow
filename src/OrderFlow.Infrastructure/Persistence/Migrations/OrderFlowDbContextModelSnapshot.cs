@@ -22,6 +22,48 @@ namespace OrderFlow.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("OrderFlow.Domain.Entities.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<int>("ReservedQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("reserved_quantity");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId")
+                        .IsUnique();
+
+                    b.ToTable("inventory_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_inventory_items_quantity_non_negative", "quantity >= 0");
+
+                            t.HasCheckConstraint("ck_inventory_items_reserved_quantity_lte_quantity", "reserved_quantity <= quantity");
+
+                            t.HasCheckConstraint("ck_inventory_items_reserved_quantity_non_negative", "reserved_quantity >= 0");
+                        });
+                });
+
             modelBuilder.Entity("OrderFlow.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -61,6 +103,15 @@ namespace OrderFlow.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("products", (string)null);
+                });
+
+            modelBuilder.Entity("OrderFlow.Domain.Entities.InventoryItem", b =>
+                {
+                    b.HasOne("OrderFlow.Domain.Entities.Product", null)
+                        .WithOne()
+                        .HasForeignKey("OrderFlow.Domain.Entities.InventoryItem", "ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }
