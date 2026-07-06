@@ -59,6 +59,7 @@ public sealed class ProductApiFactory : WebApplicationFactory<Program>, IAsyncLi
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
 
+        await dbContext.Database.ExecuteSqlRawAsync("DELETE FROM inventory_items;");
         await dbContext.Database.ExecuteSqlRawAsync("DELETE FROM products;");
     }
 }
