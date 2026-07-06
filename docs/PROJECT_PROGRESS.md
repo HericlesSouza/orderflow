@@ -2,25 +2,26 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-07-04
+- Ultima atualizacao: 2026-07-06
 - Fase atual: Fase 3 - Estoque
-- Foco atual: conectar o dominio de estoque ja iniciado com API, Application, Infrastructure e testes de integracao
-- Proximo marco concreto: implementar `POST /inventory/items` para registrar o primeiro estoque de produto
+- Foco atual: expandir o fluxo inicial de estoque apos concluir o registro do primeiro `InventoryItem`
+- Proximo marco concreto: implementar `POST /inventory/items/{productId}/increase` para entrada de estoque
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, `POST /products`, `GET /products`, `GET /products/{id}`, `PATCH /products/{id}/price` e `PATCH /products/{id}/status`
-  - Application implementada hoje: fluxos de criacao, listagem, consulta por id e atualizacao de produto
-  - Infrastructure implementada hoje: persistencia, listagem, consulta por id e atualizacao de `Product`
-  - Dominio ja possui bases de `InventoryItem`, `Order` e `OrderItem`, mas esses fluxos ainda nao chegaram na API, Application e Infrastructure
+  - API implementada hoje: `GET /health`, `POST /products`, `GET /products`, `GET /products/{id}`, `PATCH /products/{id}/price`, `PATCH /products/{id}/status` e `POST /inventory/items`
+  - Application implementada hoje: fluxos de criacao, listagem, consulta por id e atualizacao de produto, alem da criacao de `InventoryItem`
+  - Infrastructure implementada hoje: persistencia, listagem, consulta por id e atualizacao de `Product`, mais persistencia de `InventoryItem` com protecao de duplicidade
+  - A solucao agora possui tratamento centralizado de erros de aplicacao com `AppError`, `Result<T>` tipado e traducao HTTP por tipo
+  - Dominio ja possui bases de `InventoryItem`, `Order` e `OrderItem`; Pedidos ainda nao chegaram na API, Application e Infrastructure
 
 ## Snapshot de Validacao
 
 - Build: validado durante `dotnet test OrderFlow.slnx`
-- Testes totais: 66 aprovados
-- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto, com seed direto no banco para isolar os cenarios de leitura e update
+- Testes totais: 77 aprovados
+- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto, mais criacao inicial de estoque, com seed direto no banco para isolar os cenarios
 - Observacoes de ambiente:
-  - `dotnet test OrderFlow.slnx` executado em 2026-07-04
+  - `dotnet test OrderFlow.slnx` executado em 2026-07-06
   - restauracao, compilacao e execucao dos testes passaram
-  - a suite ficou verde no ambiente atual apos a reorganizacao dos testes por camada e feature
+  - a suite ficou verde no ambiente atual apos adicionar create inventory e refatorar o tratamento de erros da aplicacao
 
 ## Progresso por Fase
 
@@ -59,12 +60,14 @@ Status: `Em andamento`
 - [x] Criar entidade `InventoryItem`
 - [x] Implementar regras de aumento, reserva e liberacao no dominio
 - [x] Testar regras principais de estoque no dominio
-- [ ] Integrar estoque ao `OrderFlowDbContext` e as migrations
+- [x] Integrar estoque ao `OrderFlowDbContext` e as migrations
 - [ ] Criar endpoints de estoque
-- [ ] Implementar entrada de estoque na aplicacao
-- [ ] Criar persistencia com EF Core para estoque
-- [ ] Impedir fluxos invalidos na borda da aplicacao
-- [ ] Criar testes de integracao para estoque
+- [x] Implementar entrada inicial de estoque na aplicacao (`POST /inventory/items`)
+- [x] Criar persistencia com EF Core para estoque
+- [x] Impedir fluxos invalidos na borda da aplicacao para criacao inicial de estoque
+- [x] Criar testes de integracao para criacao inicial de estoque
+- [ ] Implementar `POST /inventory/items/{productId}/increase`
+- [ ] Implementar `GET /inventory/items/{productId}`
 
 ### Fase 4 - Pedidos
 
@@ -99,8 +102,9 @@ Status: `Em andamento`
 - [x] Configurar Testcontainers com PostgreSQL
 - [x] Criar infraestrutura base para testes de integracao
 - [x] Testar criacao de produto
+- [x] Testar criacao inicial de estoque
 - [x] Validar execucao com Docker ativo no ambiente
-- [ ] Testar entrada de estoque
+- [ ] Testar aumento de estoque
 - [ ] Testar criacao de pedido
 - [ ] Testar pedido com estoque insuficiente
 - [ ] Testar cancelamento de pedido
@@ -137,13 +141,16 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Integrar `InventoryItem` ao `OrderFlowDbContext` e preparar as migrations correspondentes
-- Criar `POST /inventory/items`, `POST /inventory/items/{productId}/increase` e `GET /inventory/items/{productId}`
-- Iniciar Estoque conectando o dominio ja pronto com API, Application, Infrastructure e testes
+- Implementar `POST /inventory/items/{productId}/increase`
+- Implementar `GET /inventory/items/{productId}`
+- Reaproveitar o padrao atual de `AppError` e traducao HTTP ao expandir Estoque e iniciar Pedidos
 - Criar o fluxo de criacao de Pedido validando produto ativo e estoque disponivel
 
 ## Historico de Atualizacoes
 
+- 2026-07-06 - Implementado `POST /inventory/items` com API, use case, repositorio, testes de integracao e persistencia protegendo a regra de um estoque por produto.
+- 2026-07-06 - Refatorado o tratamento de erros para `AppError` global com `Result<T>` tipado e traducao HTTP centralizada por tipo (`Validation`, `NotFound`, `Conflict`).
+- 2026-07-06 - Atualizado o snapshot da suite para 77 testes aprovados apos concluir create inventory e a revisao do fluxo de erros.
 - 2026-07-04 - Refatorada a suite de testes de Products com organizacao por camada/feature, `FakeProductRepository` compartilhado e seed direto no banco nos testes de integracao.
 - 2026-07-04 - Simplificada a API de mutacao de `Product` com remocao do metodo generico `Update(...)`; o snapshot da suite passou a refletir 66 testes aprovados.
 - 2026-07-04 - Concluida a Fase 2 de Produtos com `GET /products`, `PATCH /products/{id}/price` e `PATCH /products/{id}/status`, alem de novos testes unitarios e de integracao.
