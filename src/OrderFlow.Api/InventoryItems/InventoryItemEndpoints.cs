@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.InventoryItems.Create;
 using OrderFlow.Application.InventoryItems.Create;
+using OrderFlow.Application.InventoryItems.GetByProductId;
 
 namespace OrderFlow.Api.InventoryItems;
 
@@ -22,6 +23,14 @@ public static class InventoryItemEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapGet("/{productId:guid}", GetInventoryByProductIdAsync)
+            .WithName("GetInventoryByProductId")
+            .WithSummary("Gets an inventory item by product ID.")
+            .WithDescription("Retrieves the inventory item associated with the specified product ID.")
+            .Produces<InventoryItemResponse>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         return endpoints;
@@ -50,6 +59,23 @@ public static class InventoryItemEndpoints
 
         var response = InventoryItemResponse.FromOutput(result.Value!);
 
-        return Results.Created($"/inventory/items/{response.Id}", response);
+        return Results.Created($"/inventory/items/{response.ProductId}", response);
+    }
+
+    private static async Task<IResult> GetInventoryByProductIdAsync(
+        [FromRoute] Guid productId,
+        GetInventoryItemByProductIdUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.ExecuteAsync(productId, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.ToProblem();
+        }
+
+        var response = InventoryItemResponse.FromOutput(result.Value!);
+
+        return Results.Ok(response);
     }
 }

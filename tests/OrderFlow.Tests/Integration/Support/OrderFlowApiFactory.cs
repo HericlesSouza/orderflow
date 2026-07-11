@@ -9,7 +9,7 @@ using Testcontainers.PostgreSql;
 
 namespace OrderFlow.Tests.Integration.Support;
 
-public sealed class ProductApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class OrderFlowApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder()
         .WithDatabase("orderflow_tests")

@@ -10,7 +10,7 @@ using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.Products;
 
-public sealed class CreateProductEndpointTests(ProductApiFactory factory) : IntegrationTestBase(factory)
+public sealed class CreateProductEndpointTests(OrderFlowApiFactory factory) : IntegrationTestBase(factory)
 {
     [Fact]
     public async Task Should_Create_Product_When_Request_Is_Valid()

@@ -28,4 +28,11 @@ public class InventoryItemRepository(OrderFlowDbContext dbContext) : IInventoryI
             inventoryItem => inventoryItem.ProductId == productId,
             cancellationToken);
     }
+
+    public async Task<InventoryItem?> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken)
+    {
+        return await dbContext.InventoryItems
+            .AsNoTracking()
+            .FirstOrDefaultAsync(inventoryItem => inventoryItem.ProductId == productId, cancellationToken);
+    }
 }

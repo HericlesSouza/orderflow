@@ -10,7 +10,7 @@ using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.Products;
 
-public sealed class UpdateProductStatusEndpointTests(ProductApiFactory factory) : IntegrationTestBase(factory)
+public sealed class UpdateProductStatusEndpointTests(OrderFlowApiFactory factory) : IntegrationTestBase(factory)
 {
     [Fact]
     public async Task Should_Deactivate_Product_When_Request_Is_Valid()

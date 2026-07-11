@@ -10,7 +10,7 @@ using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.InventoryItems;
 
-public sealed class CreateInventoryItemEndpointTests(ProductApiFactory factory) : IntegrationTestBase(factory)
+public sealed class CreateInventoryItemEndpointTests(OrderFlowApiFactory factory) : IntegrationTestBase(factory)
 {
     [Fact]
     public async Task Should_Create_Inventory_Item_When_Request_Is_Valid()

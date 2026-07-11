@@ -10,7 +10,7 @@ using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.Products;
 
-public sealed class UpdateProductPriceEndpointTests(ProductApiFactory factory) : IntegrationTestBase(factory)
+public sealed class UpdateProductPriceEndpointTests(OrderFlowApiFactory factory) : IntegrationTestBase(factory)
 {
     [Fact]
     public async Task Should_Update_Product_Price_When_Request_Is_Valid()

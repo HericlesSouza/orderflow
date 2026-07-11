@@ -5,7 +5,7 @@ using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.Products;
 
-public sealed class GetProductsEndpointTests(ProductApiFactory factory) : IntegrationTestBase(factory)
+public sealed class GetProductsEndpointTests(OrderFlowApiFactory factory) : IntegrationTestBase(factory)
 {
     [Fact]
     public async Task Should_Return_Empty_List_When_There_Are_No_Products()

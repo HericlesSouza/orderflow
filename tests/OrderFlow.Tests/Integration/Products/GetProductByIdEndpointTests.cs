@@ -6,7 +6,7 @@ using OrderFlow.Tests.Integration.Support;
 
 namespace OrderFlow.Tests.Integration.Products;
 
-public sealed class GetProductByIdEndpointTests(ProductApiFactory factory) : IntegrationTestBase(factory)
+public sealed class GetProductByIdEndpointTests(OrderFlowApiFactory factory) : IntegrationTestBase(factory)
 {
     [Fact]
     public async Task Should_Return_Product_When_Product_Exists()
