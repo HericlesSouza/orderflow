@@ -17,9 +17,10 @@ Documentacao oficial por objetivo:
 Resumo rapido do momento:
 
 - Fundacao principal concluida
-- `POST /products` ja implementado com validacao, persistencia e testes
-- Estoque e pedidos ja iniciados no dominio
-- Testes de integracao ja existem, mas exigem Docker ativo no ambiente
+- Endpoints atuais de Products concluidos: criacao, listagem, consulta por id e atualizacao de preco/status
+- Estoque ja possui criacao inicial e consulta por produto via API
+- Pedidos ainda estao concentrados no dominio, sem fluxo ponta a ponta em API/Application/Infrastructure
+- Suite validada atualmente com 83 testes aprovados; os testes de integracao exigem Docker ativo no ambiente
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que ja foi feito, o que esta em andamento, o que falta e eventuais bloqueios.
 
