@@ -1,6 +1,7 @@
+using Moq;
 using OrderFlow.Application.Products.GetAll;
+using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
-using OrderFlow.Tests.Common.Fakes;
 
 namespace OrderFlow.Tests;
 
@@ -9,8 +10,12 @@ public sealed class GetProductsUseCaseTests
     [Fact]
     public async Task Should_Return_Empty_List_When_There_Are_No_Products()
     {
-        var repository = new FakeProductRepository();
-        var useCase = new GetProductsUseCase(repository);
+        var repositoryMock = new Mock<IProductRepository>();
+        repositoryMock
+            .Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Product>());
+
+        var useCase = new GetProductsUseCase(repositoryMock.Object);
 
         var result = await useCase.ExecuteAsync(CancellationToken.None);
 
@@ -22,8 +27,12 @@ public sealed class GetProductsUseCaseTests
     {
         var firstProduct = Product.Create("Notebook", 3500.00m, "Gaming notebook");
         var secondProduct = Product.Create("Mouse", 150.00m, "Wireless mouse");
-        var repository = new FakeProductRepository([secondProduct, firstProduct]);
-        var useCase = new GetProductsUseCase(repository);
+        var repositoryMock = new Mock<IProductRepository>();
+        repositoryMock
+            .Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([secondProduct, firstProduct]);
+
+        var useCase = new GetProductsUseCase(repositoryMock.Object);
 
         var result = await useCase.ExecuteAsync(CancellationToken.None);
 
