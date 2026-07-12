@@ -3,13 +3,13 @@
 ## Resumo Atual
 
 - Ultima atualizacao: 2026-07-11
-- Fase atual: Fase 3 - Estoque
-- Foco atual: fechar o fluxo principal de estoque com o endpoint de aumento de quantidade antes de iniciar pedidos ponta a ponta
-- Proximo marco concreto: implementar `POST /inventory/items/{productId}/increase` para entrada de estoque
+- Fase atual: Fase 4 - Pedidos
+- Foco atual: iniciar o fluxo ponta a ponta de pedidos sobre a base ja concluida de produtos e estoque
+- Proximo marco concreto: integrar `Order` e `OrderItem` ao `OrderFlowDbContext` e preparar a persistencia do primeiro `POST /orders`
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, `POST /products`, `GET /products`, `GET /products/{id}`, `PATCH /products/{id}/price`, `PATCH /products/{id}/status`, `POST /inventory/items` e `GET /inventory/items/{productId}`
-  - Application implementada hoje: fluxos de criacao, listagem, consulta por id e atualizacao de produto, alem de `CreateInventoryItemUseCase` e `GetInventoryItemByProductIdUseCase`
-  - Infrastructure implementada hoje: persistencia, listagem, consulta por id e atualizacao de `Product`, mais repositorio de estoque com `Add`, `ExistsByProductId` e `GetByProductId`
+  - API implementada hoje: `GET /health`, `POST /products`, `GET /products`, `GET /products/{id}`, `PATCH /products/{id}/price`, `PATCH /products/{id}/status`, `POST /inventory/items`, `GET /inventory/items/{productId}` e `POST /inventory/items/{productId}/increase`
+  - Application implementada hoje: fluxos de criacao, listagem, consulta por id e atualizacao de produto, alem de `CreateInventoryItemUseCase`, `GetInventoryItemByProductIdUseCase` e `IncreaseInventoryItemStockUseCase`
+  - Infrastructure implementada hoje: persistencia, listagem, consulta por id e atualizacao de `Product`, mais repositorio de estoque com `Add`, `ExistsByProductId`, `GetByProductId` e `Update`
   - A solucao agora possui tratamento centralizado de erros de aplicacao com `AppError`, `Result<T>` tipado e traducao HTTP por tipo
   - Dominio ja possui bases de `InventoryItem`, `Order` e `OrderItem`; Pedidos ainda nao chegaram na API, Application e Infrastructure
 
@@ -17,10 +17,10 @@
 
 - SDK .NET validado: `10.0.301`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 83 aprovados
-- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto, mais criacao inicial e consulta de estoque por produto, com seed direto no banco para isolar os cenarios
+- Testes totais: 90 aprovados
+- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto, mais criacao inicial, consulta por produto e aumento de estoque, com seed direto no banco para isolar os cenarios
 - Observacoes de ambiente:
-  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx --no-build` executados em 2026-07-11
+  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-11
   - build e execucao da suite passaram no ambiente atual
   - os testes de integracao dependem de Docker acessivel no ambiente
 
@@ -56,7 +56,7 @@ Status: `Concluido`
 
 ### Fase 3 - Estoque
 
-Status: `Em andamento`
+Status: `Concluido`
 
 - [x] Criar entidade `InventoryItem`
 - [x] Implementar regras de aumento, reserva e liberacao no dominio
@@ -68,8 +68,8 @@ Status: `Em andamento`
 - [x] Impedir fluxos invalidos na borda da aplicacao para criacao inicial de estoque
 - [x] Criar testes de integracao para criacao inicial de estoque
 - [x] Implementar `GET /inventory/items/{productId}`
-- [ ] Implementar `POST /inventory/items/{productId}/increase`
-- [ ] Fechar o fluxo principal restante de estoque com aumento de quantidade
+- [x] Implementar `POST /inventory/items/{productId}/increase`
+- [x] Fechar o fluxo principal restante de estoque com aumento de quantidade
 
 ### Fase 4 - Pedidos
 
@@ -106,8 +106,8 @@ Status: `Em andamento`
 - [x] Testar criacao de produto
 - [x] Testar criacao inicial de estoque
 - [x] Testar consulta de estoque por produto
+- [x] Testar aumento de estoque
 - [x] Validar execucao com Docker ativo no ambiente
-- [ ] Testar aumento de estoque
 - [ ] Testar criacao de pedido
 - [ ] Testar pedido com estoque insuficiente
 - [ ] Testar cancelamento de pedido
@@ -144,13 +144,15 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Implementar `POST /inventory/items/{productId}/increase`
-- Reaproveitar o padrao atual de `AppError` e traducao HTTP ao expandir Estoque e iniciar Pedidos
+- Integrar `Order` e `OrderItem` ao `OrderFlowDbContext`, configuracoes EF Core e migrations
 - Criar o fluxo de criacao de Pedido validando produto ativo e estoque disponivel
-- Expandir os testes de integracao para cobrir aumento de estoque e o primeiro fluxo real de pedidos
+- Reservar estoque dentro da criacao do pedido e persistir pedido + itens
+- Expandir os testes de integracao para cobrir o primeiro fluxo real de pedidos
 
 ## Historico de Atualizacoes
 
+- 2026-07-11 - Implementado `POST /inventory/items/{productId}/increase` com request dedicado, use case, persistencia via `UpdateAsync` e testes unitarios/integracao.
+- 2026-07-11 - Concluida a Fase 3 de Estoque com API de criacao, consulta e aumento, elevando a suite para 90 testes aprovados.
 - 2026-07-11 - Sincronizado o `PROJECT_PROGRESS.md` com o estado real do codigo, incluindo o endpoint `GET /inventory/items/{productId}` no retrato oficial da API.
 - 2026-07-11 - Atualizado o snapshot de validacao para .NET SDK `10.0.301`, build verde e 83 testes aprovados no ambiente atual.
 - 2026-07-06 - Implementado `POST /inventory/items` com API, use case, repositorio, testes de integracao e persistencia protegendo a regra de um estoque por produto.
