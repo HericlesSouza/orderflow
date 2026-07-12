@@ -7,6 +7,8 @@ public class OrderFlowDbContext(DbContextOptions<OrderFlowDbContext> options) : 
 {
     public DbSet<Product> Products => Set<Product>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -19,6 +19,16 @@ public class ProductRepository(OrderFlowDbContext dbContext) : IProductRepositor
             .SingleOrDefaultAsync(product => product.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Product>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Products
+            .AsNoTracking()
+            .Where(product => ids.Contains(product.Id))
+            .ToArrayAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Product>> ListAsync(CancellationToken cancellationToken)
     {
         return await dbContext.Products

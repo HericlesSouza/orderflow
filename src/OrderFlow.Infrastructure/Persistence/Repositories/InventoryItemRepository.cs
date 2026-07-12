@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using OrderFlow.Application.Repositories;
 using OrderFlow.Application.InventoryItems;
+using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
 using OrderFlow.Infrastructure.Persistence;
 
@@ -34,6 +34,23 @@ public class InventoryItemRepository(OrderFlowDbContext dbContext) : IInventoryI
         return await dbContext.InventoryItems
             .AsNoTracking()
             .FirstOrDefaultAsync(inventoryItem => inventoryItem.ProductId == productId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<InventoryItem>> GetByProductIdsForReservationAsync(
+        IReadOnlyCollection<Guid> productIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = productIds.OrderBy(id => id).ToArray();
+
+        return await dbContext.InventoryItems
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM inventory_items
+                WHERE product_id = ANY ({ids})
+                ORDER BY product_id
+                FOR UPDATE
+                """)
+            .ToArrayAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(InventoryItem inventoryItem, CancellationToken cancellationToken)
