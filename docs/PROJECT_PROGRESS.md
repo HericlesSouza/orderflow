@@ -3,22 +3,22 @@
 ## Resumo Atual
 
 - Ultima atualizacao: 2026-07-11
-- Fase atual: Fase 4 - Pedidos
-- Foco atual: iniciar o fluxo ponta a ponta de pedidos sobre a base ja concluida de produtos e estoque
-- Proximo marco concreto: integrar `Order` e `OrderItem` ao `OrderFlowDbContext` e preparar a persistencia do primeiro `POST /orders`
+- Fase atual: Fase 5 - Cancelamento
+- Foco atual: implementar o cancelamento ponta a ponta reutilizando a transacao e as reservas consolidadas na Fase 4
+- Proximo marco concreto: criar o caso de uso de cancelamento com liberacao atomica do estoque reservado
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, `POST /products`, `GET /products`, `GET /products/{id}`, `PATCH /products/{id}/price`, `PATCH /products/{id}/status`, `POST /inventory/items`, `GET /inventory/items/{productId}` e `POST /inventory/items/{productId}/increase`
-  - Application implementada hoje: fluxos de criacao, listagem, consulta por id e atualizacao de produto, alem de `CreateInventoryItemUseCase`, `GetInventoryItemByProductIdUseCase` e `IncreaseInventoryItemStockUseCase`
-  - Infrastructure implementada hoje: persistencia, listagem, consulta por id e atualizacao de `Product`, mais repositorio de estoque com `Add`, `ExistsByProductId`, `GetByProductId` e `Update`
+  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders` e `GET /orders/{id}`
+  - Application implementada hoje: fluxos de Products e Inventory, mais criacao e consulta por id de pedidos com validacao de produto e estoque
+  - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de estoque por linha durante a criacao de pedidos
   - A solucao agora possui tratamento centralizado de erros de aplicacao com `AppError`, `Result<T>` tipado e traducao HTTP por tipo
-  - Dominio ja possui bases de `InventoryItem`, `Order` e `OrderItem`; Pedidos ainda nao chegaram na API, Application e Infrastructure
+  - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao
 
 ## Snapshot de Validacao
 
 - SDK .NET validado: `10.0.301`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 90 aprovados
-- Testes de integracao implementados hoje: criacao, listagem, consulta por id e atualizacao de produto, mais criacao inicial, consulta por produto e aumento de estoque, com seed direto no banco para isolar os cenarios
+- Testes totais: 109 aprovados
+- Testes de integracao implementados hoje: fluxos de Products e Inventory, mais criacao/consulta de pedidos, rollback, preco historico e concorrencia de reserva, usando PostgreSQL real via Testcontainers
 - Observacoes de ambiente:
   - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-11
   - build e execucao da suite passaram no ambiente atual
@@ -73,18 +73,19 @@ Status: `Concluido`
 
 ### Fase 4 - Pedidos
 
-Status: `Em andamento`
+Status: `Concluido`
 
 - [x] Criar entidades `Order` e `OrderItem`
 - [x] Implementar calculo de total no dominio
 - [x] Implementar transicoes basicas de status no dominio
 - [x] Testar regras principais de pedido no dominio
-- [ ] Integrar pedidos ao `OrderFlowDbContext` e as migrations
-- [ ] Criar endpoint de criacao de pedido
-- [ ] Validar produtos e estoque no fluxo de aplicacao
-- [ ] Reservar estoque dentro da criacao do pedido
-- [ ] Persistir pedido e itens
-- [ ] Criar endpoint `GET /orders/{id}`
+- [x] Integrar pedidos ao `OrderFlowDbContext` e as migrations
+- [x] Criar endpoint de criacao de pedido
+- [x] Validar produtos e estoque no fluxo de aplicacao
+- [x] Reservar estoque dentro da criacao do pedido
+- [x] Persistir pedido e itens de forma atomica
+- [x] Proteger a reserva concorrente com bloqueio de estoque por linha
+- [x] Criar endpoint `GET /orders/{id}`
 
 ### Fase 5 - Cancelamento
 
@@ -108,8 +109,8 @@ Status: `Em andamento`
 - [x] Testar consulta de estoque por produto
 - [x] Testar aumento de estoque
 - [x] Validar execucao com Docker ativo no ambiente
-- [ ] Testar criacao de pedido
-- [ ] Testar pedido com estoque insuficiente
+- [x] Testar criacao de pedido
+- [x] Testar pedido com estoque insuficiente
 - [ ] Testar cancelamento de pedido
 
 ### Fase 7 - Pagamentos
@@ -144,13 +145,15 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Integrar `Order` e `OrderItem` ao `OrderFlowDbContext`, configuracoes EF Core e migrations
-- Criar o fluxo de criacao de Pedido validando produto ativo e estoque disponivel
-- Reservar estoque dentro da criacao do pedido e persistir pedido + itens
-- Expandir os testes de integracao para cobrir o primeiro fluxo real de pedidos
+- Implementar o caso de uso de cancelamento de pedido
+- Carregar o pedido com seus itens e bloquear os estoques envolvidos dentro da transacao
+- Liberar as quantidades reservadas e persistir a mudanca de status atomicamente
+- Criar `POST /orders/{id}/cancel` e os testes ponta a ponta da Fase 5
 
 ## Historico de Atualizacoes
 
+- 2026-07-11 - Concluida a Fase 4 com `POST /orders`, `GET /orders/{id}`, persistencia de `Order`/`OrderItem`, preco historico e reserva atomica de estoque.
+- 2026-07-11 - Adicionada protecao contra sobrevenda com bloqueio pessimista por linha no PostgreSQL e teste concorrente, elevando a suite para 109 testes aprovados.
 - 2026-07-11 - Implementado `POST /inventory/items/{productId}/increase` com request dedicado, use case, persistencia via `UpdateAsync` e testes unitarios/integracao.
 - 2026-07-11 - Concluida a Fase 3 de Estoque com API de criacao, consulta e aumento, elevando a suite para 90 testes aprovados.
 - 2026-07-11 - Sincronizado o `PROJECT_PROGRESS.md` com o estado real do codigo, incluindo o endpoint `GET /inventory/items/{productId}` no retrato oficial da API.

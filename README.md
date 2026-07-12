@@ -19,8 +19,8 @@ Resumo rapido do momento:
 - Fundacao principal concluida
 - Endpoints atuais de Products concluidos: criacao, listagem, consulta por id e atualizacao de preco/status
 - Estoque ja possui criacao inicial e consulta por produto via API
-- Pedidos ainda estao concentrados no dominio, sem fluxo ponta a ponta em API/Application/Infrastructure
-- Suite validada atualmente com 83 testes aprovados; os testes de integracao exigem Docker ativo no ambiente
+- Pedidos possuem criacao e consulta por ID ponta a ponta, com reserva atomica de estoque e protecao contra concorrencia
+- Suite validada atualmente com 109 testes aprovados; os testes de integracao exigem Docker ativo no ambiente
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que ja foi feito, o que esta em andamento, o que falta e eventuais bloqueios.
 
