@@ -35,4 +35,10 @@ public class InventoryItemRepository(OrderFlowDbContext dbContext) : IInventoryI
             .AsNoTracking()
             .FirstOrDefaultAsync(inventoryItem => inventoryItem.ProductId == productId, cancellationToken);
     }
+
+    public async Task UpdateAsync(InventoryItem inventoryItem, CancellationToken cancellationToken)
+    {
+        dbContext.InventoryItems.Update(inventoryItem);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

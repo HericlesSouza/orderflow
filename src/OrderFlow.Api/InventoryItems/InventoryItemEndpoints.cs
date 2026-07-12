@@ -2,8 +2,10 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.InventoryItems.Create;
+using OrderFlow.Api.InventoryItems.Increase;
 using OrderFlow.Application.InventoryItems.Create;
 using OrderFlow.Application.InventoryItems.GetByProductId;
+using OrderFlow.Application.InventoryItems.Increase;
 
 namespace OrderFlow.Api.InventoryItems;
 
@@ -30,6 +32,16 @@ public static class InventoryItemEndpoints
             .WithSummary("Gets an inventory item by product ID.")
             .WithDescription("Retrieves the inventory item associated with the specified product ID.")
             .Produces<InventoryItemResponse>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/{productId:guid}/increase", IncreaseInventoryItemStockAsync)
+            .WithName("IncreaseInventoryItemStock")
+            .WithSummary("Increases inventory stock.")
+            .WithDescription("Increases the quantity of an existing inventory item for the specified product.")
+            .Produces<InventoryItemResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
@@ -77,5 +89,31 @@ public static class InventoryItemEndpoints
         var response = InventoryItemResponse.FromOutput(result.Value!);
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> IncreaseInventoryItemStockAsync(
+        [FromRoute] Guid productId,
+        [FromBody] IncreaseInventoryItemStockRequest request,
+        IValidator<IncreaseInventoryItemStockRequest> validator,
+        IncreaseInventoryItemStockUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(request, cancellationToken);
+
+        if (!validationResult.IsValid)
+        {
+            return Results.ValidationProblem(validationResult.ToDictionary());
+        }
+
+        var result = await useCase.ExecuteAsync(
+            new IncreaseInventoryItemStockInput(productId, request.Quantity),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.ToProblem();
+        }
+
+        return Results.Ok(InventoryItemResponse.FromOutput(result.Value!));
     }
 }
