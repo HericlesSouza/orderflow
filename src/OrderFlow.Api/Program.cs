@@ -1,7 +1,8 @@
+using OrderFlow.Api;
 using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.InventoryItems;
+using OrderFlow.Api.Orders;
 using OrderFlow.Api.Products;
-using OrderFlow.Api;
 using OrderFlow.Application;
 using OrderFlow.Infrastructure;
 
@@ -20,6 +21,7 @@ app.MapGet("/health", () => Results.Ok(new HealthCheckResponse("Healthy")))
 
 app.MapProductEndpoints();
 app.MapInventoryItemEndpoints();
+app.MapOrderEndpoints();
 
 app.Run();
 
