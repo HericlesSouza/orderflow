@@ -180,7 +180,7 @@ public sealed class CreateOrderUseCaseTests
     {
         var repository = new Mock<IInventoryItemRepository>();
         repository
-            .Setup(value => value.GetByProductIdsForReservationAsync(
+            .Setup(value => value.GetByProductIdsForUpdateAsync(
                 It.IsAny<IReadOnlyCollection<Guid>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(inventoryItems);

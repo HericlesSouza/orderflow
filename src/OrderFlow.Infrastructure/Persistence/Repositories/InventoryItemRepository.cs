@@ -36,7 +36,7 @@ public class InventoryItemRepository(OrderFlowDbContext dbContext) : IInventoryI
             .FirstOrDefaultAsync(inventoryItem => inventoryItem.ProductId == productId, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<InventoryItem>> GetByProductIdsForReservationAsync(
+    public async Task<IReadOnlyList<InventoryItem>> GetByProductIdsForUpdateAsync(
         IReadOnlyCollection<Guid> productIds,
         CancellationToken cancellationToken)
     {

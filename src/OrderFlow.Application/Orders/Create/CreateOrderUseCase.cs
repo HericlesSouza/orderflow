@@ -33,7 +33,7 @@ public sealed class CreateOrderUseCase(
         if (productValidation.IsFailure)
             return Result<OrderOutput>.Failure(productValidation.Error!);
 
-        var inventoryItems = await inventoryItemRepository.GetByProductIdsForReservationAsync(
+        var inventoryItems = await inventoryItemRepository.GetByProductIdsForUpdateAsync(
             productIds,
             cancellationToken);
         var inventoryItemsByProductId = inventoryItems.ToDictionary(item => item.ProductId);

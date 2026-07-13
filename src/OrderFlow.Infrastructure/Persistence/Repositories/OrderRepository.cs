@@ -18,4 +18,17 @@ public sealed class OrderRepository(OrderFlowDbContext dbContext) : IOrderReposi
             .Include(order => order.OrderItems)
             .SingleOrDefaultAsync(order => order.Id == id, cancellationToken);
     }
+
+    public async Task<Order?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Orders
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM orders
+                WHERE id = {id}
+                FOR UPDATE
+                """)
+            .Include(order => order.OrderItems)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
 }

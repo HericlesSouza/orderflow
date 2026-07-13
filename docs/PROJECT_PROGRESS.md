@@ -2,25 +2,25 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-07-11
-- Fase atual: Fase 5 - Cancelamento
-- Foco atual: implementar o cancelamento ponta a ponta reutilizando a transacao e as reservas consolidadas na Fase 4
-- Proximo marco concreto: criar o caso de uso de cancelamento com liberacao atomica do estoque reservado
+- Ultima atualizacao: 2026-07-13
+- Fase atual: Fase 7 - Pagamentos
+- Foco atual: iniciar o fluxo de pagamento simulado para pedidos pendentes
+- Proximo marco concreto: definir o contrato do primeiro fluxo de pagamento e confirmar ou rejeitar um pedido de forma consistente
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders` e `GET /orders/{id}`
-  - Application implementada hoje: fluxos de Products e Inventory, mais criacao e consulta por id de pedidos com validacao de produto e estoque
-  - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de estoque por linha durante a criacao de pedidos
+  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}` e `POST /orders/{id}/cancel`
+  - Application implementada hoje: fluxos de Products e Inventory, mais criacao, consulta por id e cancelamento de pedidos com validacao de produto e estoque
+  - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
   - A solucao agora possui tratamento centralizado de erros de aplicacao com `AppError`, `Result<T>` tipado e traducao HTTP por tipo
-  - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao
+  - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; o cancelamento libera as reservas e atualiza o status na mesma transacao
 
 ## Snapshot de Validacao
 
 - SDK .NET validado: `10.0.301`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 109 aprovados
-- Testes de integracao implementados hoje: fluxos de Products e Inventory, mais criacao/consulta de pedidos, rollback, preco historico e concorrencia de reserva, usando PostgreSQL real via Testcontainers
+- Testes totais: 122 aprovados
+- Testes de integracao implementados hoje: fluxos de Products e Inventory, mais criacao, consulta e cancelamento de pedidos, rollback, preco historico e concorrencia de reserva, usando PostgreSQL real via Testcontainers
 - Observacoes de ambiente:
-  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-11
+  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-13
   - build e execucao da suite passaram no ambiente atual
   - os testes de integracao dependem de Docker acessivel no ambiente
 
@@ -89,18 +89,18 @@ Status: `Concluido`
 
 ### Fase 5 - Cancelamento
 
-Status: `Em andamento`
+Status: `Concluido`
 
 - [x] Iniciar regra de cancelamento no dominio
-- [ ] Implementar cancelamento de pedido no fluxo de aplicacao
-- [ ] Liberar estoque reservado ao cancelar
-- [ ] Impedir cancelamento invalido na API/Application
-- [ ] Criar endpoint `POST /orders/{id}/cancel`
-- [ ] Testar cancelamento e liberacao de estoque ponta a ponta
+- [x] Implementar cancelamento de pedido no fluxo de aplicacao
+- [x] Liberar estoque reservado ao cancelar
+- [x] Impedir cancelamento invalido na API/Application
+- [x] Criar endpoint `POST /orders/{id}/cancel`
+- [x] Testar cancelamento e liberacao de estoque ponta a ponta
 
 ### Fase 6 - Testes de Integracao
 
-Status: `Em andamento`
+Status: `Concluido`
 
 - [x] Configurar Testcontainers com PostgreSQL
 - [x] Criar infraestrutura base para testes de integracao
@@ -111,7 +111,7 @@ Status: `Em andamento`
 - [x] Validar execucao com Docker ativo no ambiente
 - [x] Testar criacao de pedido
 - [x] Testar pedido com estoque insuficiente
-- [ ] Testar cancelamento de pedido
+- [x] Testar cancelamento de pedido
 
 ### Fase 7 - Pagamentos
 
@@ -145,13 +145,15 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Implementar o caso de uso de cancelamento de pedido
-- Carregar o pedido com seus itens e bloquear os estoques envolvidos dentro da transacao
-- Liberar as quantidades reservadas e persistir a mudanca de status atomicamente
-- Criar `POST /orders/{id}/cancel` e os testes ponta a ponta da Fase 5
+- Definir o contrato do fluxo de pagamento aprovado
+- Implementar a confirmacao de pedido apos pagamento aprovado
+- Implementar a rejeicao de pagamento com liberacao atomica de estoque
+- Criar testes unitarios e de integracao para os dois resultados de pagamento
 
 ## Historico de Atualizacoes
 
+- 2026-07-13 - Concluidas as Fases 5 e 6: implementado `POST /orders/{id}/cancel`, com bloqueio transacional do pedido e do estoque, liberacao atomica de reservas e testes de integracao para sucesso, erro, repeticao e inconsistencias.
+- 2026-07-13 - Suite validada com .NET SDK `10.0.301`: build sem avisos/erros e 122 testes aprovados, incluindo Testcontainers com PostgreSQL via Docker.
 - 2026-07-11 - Concluida a Fase 4 com `POST /orders`, `GET /orders/{id}`, persistencia de `Order`/`OrderItem`, preco historico e reserva atomica de estoque.
 - 2026-07-11 - Adicionada protecao contra sobrevenda com bloqueio pessimista por linha no PostgreSQL e teste concorrente, elevando a suite para 109 testes aprovados.
 - 2026-07-11 - Implementado `POST /inventory/items/{productId}/increase` com request dedicado, use case, persistencia via `UpdateAsync` e testes unitarios/integracao.

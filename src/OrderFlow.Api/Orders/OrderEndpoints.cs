@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.Orders.Create;
 using OrderFlow.Application.Orders.Create;
+using OrderFlow.Application.Orders.Cancel;
 using OrderFlow.Application.Orders.GetById;
 
 namespace OrderFlow.Api.Orders;
@@ -31,6 +32,15 @@ public static class OrderEndpoints
             .WithDescription("Retrieves an order and all its items by its unique identifier.")
             .Produces<OrderResponse>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/{id:guid}/cancel", CancelOrderAsync)
+            .WithName("CancelOrder")
+            .WithSummary("Cancels an order.")
+            .WithDescription("Cancels a pending payment order and releases its reserved inventory atomically.")
+            .Produces<OrderResponse>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         return endpoints;
@@ -68,6 +78,21 @@ public static class OrderEndpoints
     private static async Task<IResult> GetOrderByIdAsync(
         [FromRoute] Guid id,
         GetOrderByIdUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.ExecuteAsync(id, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.ToProblem();
+        }
+
+        return Results.Ok(OrderResponse.FromOutput(result.Value!));
+    }
+
+    private static async Task<IResult> CancelOrderAsync(
+        [FromRoute] Guid id,
+        CancelOrderUseCase useCase,
         CancellationToken cancellationToken)
     {
         var result = await useCase.ExecuteAsync(id, cancellationToken);

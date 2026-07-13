@@ -3,6 +3,7 @@ using OrderFlow.Application.InventoryItems.Create;
 using OrderFlow.Application.InventoryItems.GetByProductId;
 using OrderFlow.Application.InventoryItems.Increase;
 using OrderFlow.Application.Orders.Create;
+using OrderFlow.Application.Orders.Cancel;
 using OrderFlow.Application.Orders.GetById;
 using OrderFlow.Application.Products.Create;
 using OrderFlow.Application.Products.GetAll;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IncreaseInventoryItemStockUseCase>();
 
         services.AddScoped<CreateOrderUseCase>();
+        services.AddScoped<CancelOrderUseCase>();
         services.AddScoped<GetOrderByIdUseCase>();
 
         return services;

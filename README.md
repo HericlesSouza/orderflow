@@ -19,8 +19,8 @@ Resumo rapido do momento:
 - Fundacao principal concluida
 - Endpoints atuais de Products concluidos: criacao, listagem, consulta por id e atualizacao de preco/status
 - Estoque ja possui criacao inicial e consulta por produto via API
-- Pedidos possuem criacao e consulta por ID ponta a ponta, com reserva atomica de estoque e protecao contra concorrencia
-- Suite validada atualmente com 109 testes aprovados; os testes de integracao exigem Docker ativo no ambiente
+- Pedidos possuem criacao, consulta por ID e cancelamento ponta a ponta, com reserva/liberacao atomica de estoque e protecao contra concorrencia
+- Suite validada atualmente com 122 testes aprovados; os testes de integracao exigem Docker ativo no ambiente
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que ja foi feito, o que esta em andamento, o que falta e eventuais bloqueios.
 
@@ -71,6 +71,7 @@ Este projeto tem como objetivo praticar e demonstrar:
 - Validar disponibilidade dos produtos
 - Reservar estoque
 - Cancelar pedido
+- Liberar estoque reservado ao cancelar pedido
 - Acompanhar status do pedido
 
 ### Pagamentos

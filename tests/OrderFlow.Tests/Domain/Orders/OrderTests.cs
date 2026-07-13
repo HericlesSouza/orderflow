@@ -78,6 +78,19 @@ public sealed class OrderTests
     }
 
     [Fact]
+    public void Should_Throw_InvalidOperationException_When_Cancelling_A_PaymentRejected_Order()
+    {
+        var order = Order.Create([OrderItem.Create(Guid.NewGuid(), 1, 100.00m)]);
+        order.RejectPayment();
+
+        var act = () => order.Cancel();
+
+        var exception = Assert.Throws<InvalidOperationException>(act);
+
+        Assert.Equal("Payment rejected order cannot be cancelled.", exception.Message);
+    }
+
+    [Fact]
     public void Should_Confirm_Payment_When_Order_Is_PendingPayment()
     {
         var order = Order.Create([OrderItem.Create(Guid.NewGuid(), 1, 100.00m)]);
