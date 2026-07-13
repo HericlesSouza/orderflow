@@ -121,6 +121,37 @@ public sealed class CreateOrderUseCaseTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task Should_Not_Reserve_Any_Inventory_When_One_Item_Has_Insufficient_Inventory()
+    {
+        var products = new[]
+        {
+            Product.Create("Notebook", 3500.00m, "Gaming notebook"),
+            Product.Create("Mouse", 150.00m, "Wireless mouse")
+        }.OrderBy(product => product.Id).ToArray();
+        var sufficientInventory = InventoryItem.Create(products[0].Id, 5);
+        var insufficientInventory = InventoryItem.Create(products[1].Id, 1);
+        var orderRepository = new Mock<IOrderRepository>();
+        var useCase = CreateUseCase(
+            productRepository: CreateProductRepository(products),
+            inventoryRepository: CreateInventoryRepository(sufficientInventory, insufficientInventory),
+            orderRepository: orderRepository);
+
+        var result = await useCase.ExecuteAsync(
+            new CreateOrderInput([
+                new CreateOrderItemInput(products[0].Id, 2),
+                new CreateOrderItemInput(products[1].Id, 2)
+            ]),
+            CancellationToken.None);
+
+        AssertFailure(result, "order.insufficient_inventory", AppErrorType.Conflict);
+        Assert.Equal(0, sufficientInventory.ReservedQuantity);
+        Assert.Equal(0, insufficientInventory.ReservedQuantity);
+        orderRepository.Verify(
+            repository => repository.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     private static CreateOrderUseCase CreateUseCase(
         Mock<IProductRepository>? productRepository = null,
         Mock<IInventoryItemRepository>? inventoryRepository = null,
