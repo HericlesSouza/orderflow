@@ -33,6 +33,14 @@ public class Order
 
     public void Cancel()
     {
+        EnsureCanBeCancelled();
+
+        Status = OrderStatus.Cancelled;
+        CancelledAt = DateTime.UtcNow;
+    }
+
+    public void EnsureCanBeCancelled()
+    {
         if (Status == OrderStatus.Confirmed)
             throw new InvalidOperationException("Confirmed order cannot be cancelled.");
 
@@ -41,9 +49,6 @@ public class Order
 
         if (Status == OrderStatus.PaymentRejected)
             throw new InvalidOperationException("Payment rejected order cannot be cancelled.");
-
-        Status = OrderStatus.Cancelled;
-        CancelledAt = DateTime.UtcNow;
     }
 
     public void ConfirmPayment()

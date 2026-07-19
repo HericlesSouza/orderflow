@@ -28,6 +28,16 @@ public sealed class CancelOrderUseCase(
                 AppError.NotFound("order.not_found", "Order not found."));
         }
 
+        try
+        {
+            order.EnsureCanBeCancelled();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Result<OrderOutput>.Failure(
+                AppError.Conflict("order.cannot_cancel", ex.Message));
+        }
+
         var productIds = order.OrderItems.Select(item => item.ProductId).ToArray();
         var inventoryItems = await inventoryItemRepository.GetByProductIdsForUpdateAsync(productIds, cancellationToken);
         var inventoryItemsByProductId = inventoryItems.ToDictionary(item => item.ProductId);
@@ -39,15 +49,7 @@ public sealed class CancelOrderUseCase(
             return Result<OrderOutput>.Failure(inventoryValidation.Error!);
         }
 
-        try
-        {
-            order.Cancel();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Result<OrderOutput>.Failure(
-                AppError.Conflict("order.cannot_cancel", ex.Message));
-        }
+        order.Cancel();
 
         foreach (var item in order.OrderItems.OrderBy(item => item.ProductId))
         {

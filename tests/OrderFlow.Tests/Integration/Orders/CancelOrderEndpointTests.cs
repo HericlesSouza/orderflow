@@ -59,8 +59,13 @@ public sealed class CancelOrderEndpointTests(OrderFlowApiFactory factory) : Inte
         await Client.PostAsync($"/orders/{order.Id}/cancel", content: null);
 
         var response = await Client.PostAsync($"/orders/{order.Id}/cancel", content: null);
+        var body = await response.Content.ReadFromJsonAsync<ProblemDetails>();
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.Equal("Order is already cancelled.", body.Detail);
+        Assert.True(body.Extensions.TryGetValue("code", out var errorCode));
+        Assert.Equal("order.cannot_cancel", errorCode?.ToString());
 
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();

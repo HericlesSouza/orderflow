@@ -55,12 +55,15 @@ public sealed class CancelOrderUseCaseTests
     {
         var (order, inventory) = CreateOrderWithReservedInventory();
         order.Cancel();
+        inventory.Release(2);
         var useCase = CreateUseCase(order, [inventory]);
 
         var result = await useCase.ExecuteAsync(order.Id, CancellationToken.None);
 
         AssertFailure(result, "order.cannot_cancel", AppErrorType.Conflict);
-        Assert.Equal(2, inventory.ReservedQuantity);
+        Assert.Equal("Order is already cancelled.", result.Error!.Message);
+        Assert.Equal(0, inventory.ReservedQuantity);
+        Assert.Equal(5, inventory.AvailableQuantity);
     }
 
     [Fact]
