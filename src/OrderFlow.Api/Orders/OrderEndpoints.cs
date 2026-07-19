@@ -2,8 +2,8 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.Orders.Create;
-using OrderFlow.Application.Orders.Create;
 using OrderFlow.Application.Orders.Cancel;
+using OrderFlow.Application.Orders.Create;
 using OrderFlow.Application.Orders.GetById;
 
 namespace OrderFlow.Api.Orders;

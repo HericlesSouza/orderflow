@@ -2,8 +2,8 @@ using Moq;
 using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.InventoryItems;
 using OrderFlow.Application.InventoryItems.Create;
-using OrderFlow.Application.Repositories;
 using OrderFlow.Application.Products;
+using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
 
 namespace OrderFlow.Tests.Application.InventoryItems.Create;

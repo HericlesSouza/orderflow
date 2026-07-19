@@ -1,9 +1,9 @@
 using Moq;
 using OrderFlow.Application.Common.Errors;
-using OrderFlow.Application.Products.Create;
 using OrderFlow.Application.Products;
-using OrderFlow.Domain.Entities;
+using OrderFlow.Application.Products.Create;
 using OrderFlow.Application.Repositories;
+using OrderFlow.Domain.Entities;
 
 namespace OrderFlow.Tests;
 

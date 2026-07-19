@@ -27,7 +27,7 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
             .IsRequired();
 
         builder.Property(inventoryItem => inventoryItem.Quantity)
-            .HasColumnName("quantity")            
+            .HasColumnName("quantity")
             .IsRequired();
 
         builder.Property(inventoryItem => inventoryItem.ReservedQuantity)

@@ -10,14 +10,14 @@ public class GetInventoryItemByProductIdUseCase(IInventoryItemRepository invento
     {
         var inventoryItem = await inventoryItemRepository.GetByProductIdAsync(productId, cancellationToken);
 
-        if(inventoryItem is null)
+        if (inventoryItem is null)
         {
             return Result<InventoryItemOutput?>.Failure(
                 AppError.NotFound(
                     "inventory_item.not_found",
                     "No inventory item found for the specified product."));
         }
-        
+
         return Result<InventoryItemOutput?>.Success(InventoryItemOutput.FromEntity(inventoryItem));
     }
 }

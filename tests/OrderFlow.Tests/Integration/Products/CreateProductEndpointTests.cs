@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using OrderFlow.Api.Products.Create;
 using OrderFlow.Api.Products;
+using OrderFlow.Api.Products.Create;
 using OrderFlow.Infrastructure.Persistence;
 using OrderFlow.Tests.Integration.Support;
 

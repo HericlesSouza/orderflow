@@ -1,7 +1,7 @@
 using Moq;
 using OrderFlow.Application.Common.Errors;
-using OrderFlow.Application.Products.UpdateStatus;
 using OrderFlow.Application.Products;
+using OrderFlow.Application.Products.UpdateStatus;
 using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
 

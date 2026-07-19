@@ -6,7 +6,7 @@ using OrderFlow.Domain.Entities;
 namespace OrderFlow.Tests.Application.InventoryItems.GetByProductId;
 
 public sealed class GetInventoryItemByProductIdUseCaseTests
-{    
+{
     [Fact]
     public async Task Should_Return_Inventory_Item_When_Found()
     {
@@ -37,7 +37,7 @@ public sealed class GetInventoryItemByProductIdUseCaseTests
         var repository = new Mock<IInventoryItemRepository>();
         repository
             .Setup(r => r.GetByProductIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((InventoryItem?) null);
+            .ReturnsAsync((InventoryItem?)null);
         var useCase = new GetInventoryItemByProductIdUseCase(repository.Object);
 
         // Act
