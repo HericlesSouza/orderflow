@@ -2,25 +2,28 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-07-13
+- Ultima atualizacao: 2026-07-19
 - Fase atual: Fase 7 - Pagamentos
-- Foco atual: iniciar o fluxo de pagamento simulado para pedidos pendentes
+- Foco atual: MVP estabilizado e pronto para iniciar o fluxo de pagamento simulado
 - Proximo marco concreto: definir o contrato do primeiro fluxo de pagamento e confirmar ou rejeitar um pedido de forma consistente
 - Estado real da solucao:
   - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}` e `POST /orders/{id}/cancel`
   - Application implementada hoje: fluxos de Products e Inventory, mais criacao, consulta por id e cancelamento de pedidos com validacao de produto e estoque
   - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
-  - A solucao agora possui tratamento centralizado de erros de aplicacao com `AppError`, `Result<T>` tipado e traducao HTTP por tipo
+  - A solucao possui tratamento centralizado de erros com `AppError`, `Result<T>` tipado, traducao HTTP por tipo e codigo estavel em `ProblemDetails`
   - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; o cancelamento libera as reservas e atualiza o status na mesma transacao
+  - Aumento, reserva e liberacao de estoque usam transacoes e bloqueios de linha para preservar atualizacoes concorrentes
+  - O preparo de um ambiente novo usa `dotnet-ef` local e aplicacao explicita das migrations
 
 ## Snapshot de Validacao
 
-- SDK .NET validado: `10.0.301`
+- SDK .NET validado: `10.0.302`
+- Entity Framework CLI local: `10.0.9`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 122 aprovados
-- Testes de integracao implementados hoje: fluxos de Products e Inventory, mais criacao, consulta e cancelamento de pedidos, rollback, preco historico e concorrencia de reserva, usando PostgreSQL real via Testcontainers
+- Testes totais: 127 aprovados
+- Testes de integracao implementados hoje: fluxos de Products e Inventory, mais criacao, consulta e cancelamento de pedidos, rollback, preco historico, concorrencia de reserva e concorrencia entre alteracoes de estoque, usando PostgreSQL real via Testcontainers
 - Observacoes de ambiente:
-  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-13
+  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-19
   - build e execucao da suite passaram no ambiente atual
   - os testes de integracao dependem de Docker acessivel no ambiente
 
@@ -70,6 +73,7 @@ Status: `Concluido`
 - [x] Implementar `GET /inventory/items/{productId}`
 - [x] Implementar `POST /inventory/items/{productId}/increase`
 - [x] Fechar o fluxo principal restante de estoque com aumento de quantidade
+- [x] Proteger aumentos e reservas concorrentes com transacao e bloqueio de linha
 
 ### Fase 4 - Pedidos
 
@@ -97,6 +101,7 @@ Status: `Concluido`
 - [x] Impedir cancelamento invalido na API/Application
 - [x] Criar endpoint `POST /orders/{id}/cancel`
 - [x] Testar cancelamento e liberacao de estoque ponta a ponta
+- [x] Priorizar o erro de estado em tentativas repetidas de cancelamento
 
 ### Fase 6 - Testes de Integracao
 
@@ -112,6 +117,7 @@ Status: `Concluido`
 - [x] Testar criacao de pedido
 - [x] Testar pedido com estoque insuficiente
 - [x] Testar cancelamento de pedido
+- [x] Testar aumentos concorrentes e aumento concorrente com reserva de estoque
 
 ### Fase 7 - Pagamentos
 
@@ -152,6 +158,9 @@ Status: `Pendente`
 
 ## Historico de Atualizacoes
 
+- 2026-07-19 - Estabilizado o MVP: aumento de estoque protegido por transacao e `FOR UPDATE`, cancelamento repetido retornando `order.cannot_cancel` e codigos de erro expostos em `ProblemDetails`.
+- 2026-07-19 - Adicionado `dotnet-ef` `10.0.9` como ferramenta local, documentado o bootstrap completo do banco e normalizada a formatacao do repositorio.
+- 2026-07-19 - Suite completa validada com .NET SDK `10.0.302`: build sem avisos/erros e 127 testes aprovados com PostgreSQL via Testcontainers.
 - 2026-07-13 - Concluidas as Fases 5 e 6: implementado `POST /orders/{id}/cancel`, com bloqueio transacional do pedido e do estoque, liberacao atomica de reservas e testes de integracao para sucesso, erro, repeticao e inconsistencias.
 - 2026-07-13 - Suite validada com .NET SDK `10.0.301`: build sem avisos/erros e 122 testes aprovados, incluindo Testcontainers com PostgreSQL via Docker.
 - 2026-07-11 - Concluida a Fase 4 com `POST /orders`, `GET /orders/{id}`, persistencia de `Order`/`OrderItem`, preco historico e reserva atomica de estoque.

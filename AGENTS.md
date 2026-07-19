@@ -114,10 +114,13 @@ Apos implementar:
 Atualize esta secao conforme o projeto evoluir.
 
 ```bash
+dotnet tool restore
 dotnet restore OrderFlow.slnx
+docker compose up -d
+dotnet tool run dotnet-ef database update --project src/OrderFlow.Infrastructure --startup-project src/OrderFlow.Api
 dotnet build OrderFlow.slnx
 dotnet test OrderFlow.slnx
-docker compose up -d
+dotnet format OrderFlow.slnx --verify-no-changes --no-restore
 docker compose down
 ```
 

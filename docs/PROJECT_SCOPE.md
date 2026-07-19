@@ -108,8 +108,10 @@ Campos iniciais:
 |---|---|
 | Id | Identificador do registro de estoque |
 | ProductId | Produto relacionado |
-| AvailableQuantity | Quantidade disponível |
+| Quantity | Quantidade física total em estoque |
 | ReservedQuantity | Quantidade reservada em pedidos |
+| AvailableQuantity | Quantidade calculada por `Quantity - ReservedQuantity` |
+| CreatedAt | Data de criação do registro |
 | UpdatedAt | Data da última atualização |
 
 ### Order
@@ -433,6 +435,8 @@ Crie todo o sistema completo com arquitetura, testes, RabbitMQ e autenticação.
 - RabbitMQ será adicionado somente após o fluxo principal estar funcionando.
 - O banco principal será PostgreSQL.
 - Testes de integração devem usar banco real, preferencialmente com Testcontainers.
+- O CLI do Entity Framework será versionado como ferramenta local do repositório.
+- As migrations serão aplicadas explicitamente no preparo do ambiente; a API não alterará o schema automaticamente ao iniciar.
 - O projeto deve priorizar clareza e evolução incremental.
 
 ## Observações
