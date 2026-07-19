@@ -20,7 +20,11 @@ public static class AppErrorHttpMapper
         return Results.Problem(
             title: title,
             detail: error.Message,
-            statusCode: statusCode);
+            statusCode: statusCode,
+            extensions: new Dictionary<string, object?>
+            {
+                ["code"] = error.Code
+            });
     }
 
     private static (string Title, int StatusCode) GetProblemShape(AppErrorType type)

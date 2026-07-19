@@ -38,5 +38,6 @@ public sealed class GetProductByIdEndpointTests(OrderFlowApiFactory factory) : I
         Assert.NotNull(body);
         Assert.Equal("Resource not found.", body.Title);
         Assert.Equal("Product not found.", body.Detail);
+        Assert.Equal("product.not_found", body.Extensions["code"]?.ToString());
     }
 }

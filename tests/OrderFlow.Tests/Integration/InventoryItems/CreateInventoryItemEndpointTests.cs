@@ -88,6 +88,7 @@ public sealed class CreateInventoryItemEndpointTests(OrderFlowApiFactory factory
         Assert.NotNull(body);
         Assert.Equal("Conflict detected.", body.Title);
         Assert.Equal("An inventory item already exists for this product.", body.Detail);
+        Assert.Equal("inventory_item.already_exists", body.Extensions["code"]?.ToString());
     }
 
     [Fact]

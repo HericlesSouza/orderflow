@@ -157,8 +157,11 @@ public sealed class OrderEndpointsTests(OrderFlowApiFactory factory) : Integrati
         var response = await Client.PostAsJsonAsync(
             "/orders",
             CreateRequest((firstProduct.Id, 2), (secondProduct.Id, 2)));
+        var body = await response.Content.ReadFromJsonAsync<ProblemDetails>();
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.Equal("order.insufficient_inventory", body.Extensions["code"]?.ToString());
 
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
