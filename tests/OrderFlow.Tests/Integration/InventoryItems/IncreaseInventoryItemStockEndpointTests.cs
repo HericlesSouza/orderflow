@@ -57,6 +57,76 @@ public sealed class IncreaseInventoryItemStockEndpointTests(OrderFlowApiFactory 
     }
 
     [Fact]
+    public async Task Should_Preserve_Both_Increases_When_Requests_Are_Concurrent()
+    {
+        var product = await ProductSeeder.CreateProductAsync();
+        await InventoryItemSeeder.CreateInventoryItemAsync(product.Id, 10);
+
+        var responses = await Task.WhenAll(
+            Client.PostAsJsonAsync(
+                $"/inventory/items/{product.Id}/increase",
+                new IncreaseInventoryItemStockRequest(5)),
+            Client.PostAsJsonAsync(
+                $"/inventory/items/{product.Id}/increase",
+                new IncreaseInventoryItemStockRequest(5)));
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
+        var inventoryItem = await dbContext.InventoryItems.AsNoTracking().SingleAsync();
+
+        Assert.Equal(20, inventoryItem.Quantity);
+        Assert.Equal(0, inventoryItem.ReservedQuantity);
+        Assert.Equal(20, inventoryItem.AvailableQuantity);
+    }
+
+    [Fact]
+    public async Task Should_Preserve_Concurrent_Reservation_When_Increasing_Stock()
+    {
+        var product = await ProductSeeder.CreateProductAsync();
+        await InventoryItemSeeder.CreateInventoryItemAsync(product.Id, 10);
+        var warmupResponse = await Client.GetAsync($"/inventory/items/{product.Id}");
+        warmupResponse.EnsureSuccessStatusCode();
+
+        await using var reservationScope = Services.CreateAsyncScope();
+        var reservationDbContext = reservationScope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
+        await using var reservationTransaction = await reservationDbContext.Database.BeginTransactionAsync();
+        var lockedInventoryItem = await reservationDbContext.InventoryItems
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM inventory_items
+                WHERE product_id = {product.Id}
+                FOR UPDATE
+                """)
+            .SingleAsync();
+
+        var increaseTask = Client.PostAsJsonAsync(
+            $"/inventory/items/{product.Id}/increase",
+            new IncreaseInventoryItemStockRequest(5));
+
+        await Task.Delay(200);
+        var increaseWaitedForReservation = !increaseTask.IsCompleted;
+
+        lockedInventoryItem.Reserve(3);
+        await reservationDbContext.SaveChangesAsync();
+        await reservationTransaction.CommitAsync();
+
+        var response = await increaseTask.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(increaseWaitedForReservation);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        await using var verificationScope = Services.CreateAsyncScope();
+        var verificationDbContext = verificationScope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
+        var inventoryItem = await verificationDbContext.InventoryItems.AsNoTracking().SingleAsync();
+
+        Assert.Equal(15, inventoryItem.Quantity);
+        Assert.Equal(3, inventoryItem.ReservedQuantity);
+        Assert.Equal(12, inventoryItem.AvailableQuantity);
+    }
+
+    [Fact]
     public async Task Should_Return_BadRequest_When_Quantity_Is_Invalid()
     {
         var product = await ProductSeeder.CreateProductAsync();

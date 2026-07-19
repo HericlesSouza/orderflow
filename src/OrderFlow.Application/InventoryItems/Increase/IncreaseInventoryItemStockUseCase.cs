@@ -1,17 +1,30 @@
 using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Common.Results;
-using OrderFlow.Application.InventoryItems;
+using OrderFlow.Application.Common.Transactions;
 using OrderFlow.Application.Repositories;
 
 namespace OrderFlow.Application.InventoryItems.Increase;
 
-public class IncreaseInventoryItemStockUseCase(IInventoryItemRepository inventoryItemRepository)
+public class IncreaseInventoryItemStockUseCase(
+    IInventoryItemRepository inventoryItemRepository,
+    IUnitOfWork unitOfWork)
 {
-    public async Task<Result<InventoryItemOutput>> ExecuteAsync(
+    public Task<Result<InventoryItemOutput>> ExecuteAsync(
         IncreaseInventoryItemStockInput input,
         CancellationToken cancellationToken)
     {
-        var inventoryItem = await inventoryItemRepository.GetByProductIdAsync(input.ProductId, cancellationToken);
+        return unitOfWork.ExecuteInTransactionAsync(
+            transactionCancellationToken => IncreaseStockAsync(input, transactionCancellationToken),
+            cancellationToken);
+    }
+
+    private async Task<Result<InventoryItemOutput>> IncreaseStockAsync(
+        IncreaseInventoryItemStockInput input,
+        CancellationToken cancellationToken)
+    {
+        var inventoryItem = await inventoryItemRepository.GetByProductIdForUpdateAsync(
+            input.ProductId,
+            cancellationToken);
 
         if (inventoryItem is null)
         {
@@ -24,8 +37,6 @@ public class IncreaseInventoryItemStockUseCase(IInventoryItemRepository inventor
         try
         {
             inventoryItem.IncreaseStock(input.Quantity);
-
-            await inventoryItemRepository.UpdateAsync(inventoryItem, cancellationToken);
 
             return Result<InventoryItemOutput>.Success(InventoryItemOutput.FromEntity(inventoryItem));
         }

@@ -1,5 +1,7 @@
 using Moq;
 using OrderFlow.Application.Common.Errors;
+using OrderFlow.Application.Common.Results;
+using OrderFlow.Application.Common.Transactions;
 using OrderFlow.Application.InventoryItems.Increase;
 using OrderFlow.Application.Repositories;
 using OrderFlow.Domain.Entities;
@@ -16,13 +18,13 @@ public sealed class IncreaseInventoryItemStockUseCaseTests
 
         var repositoryMock = new Mock<IInventoryItemRepository>();
         repositoryMock
-            .Setup(repository => repository.GetByProductIdAsync(inventoryItem.ProductId, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetByProductIdForUpdateAsync(
+                inventoryItem.ProductId,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(inventoryItem);
-        repositoryMock
-            .Setup(repository => repository.UpdateAsync(inventoryItem, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var unitOfWork = new ImmediateUnitOfWork();
 
-        var useCase = new IncreaseInventoryItemStockUseCase(repositoryMock.Object);
+        var useCase = new IncreaseInventoryItemStockUseCase(repositoryMock.Object, unitOfWork);
 
         var result = await useCase.ExecuteAsync(
             new IncreaseInventoryItemStockInput(inventoryItem.ProductId, 5),
@@ -33,8 +35,11 @@ public sealed class IncreaseInventoryItemStockUseCaseTests
         Assert.Equal(15, result.Value!.Quantity);
         Assert.Equal(4, result.Value.ReservedQuantity);
         Assert.Equal(11, result.Value.AvailableQuantity);
+        Assert.Equal(1, unitOfWork.ExecutionCount);
         repositoryMock.Verify(
-            repository => repository.UpdateAsync(inventoryItem, It.IsAny<CancellationToken>()),
+            repository => repository.GetByProductIdForUpdateAsync(
+                inventoryItem.ProductId,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -43,10 +48,12 @@ public sealed class IncreaseInventoryItemStockUseCaseTests
     {
         var repositoryMock = new Mock<IInventoryItemRepository>();
         repositoryMock
-            .Setup(repository => repository.GetByProductIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetByProductIdForUpdateAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync((InventoryItem?)null);
 
-        var useCase = new IncreaseInventoryItemStockUseCase(repositoryMock.Object);
+        var useCase = new IncreaseInventoryItemStockUseCase(repositoryMock.Object, new ImmediateUnitOfWork());
 
         var result = await useCase.ExecuteAsync(
             new IncreaseInventoryItemStockInput(Guid.NewGuid(), 5),
@@ -57,9 +64,6 @@ public sealed class IncreaseInventoryItemStockUseCaseTests
         Assert.Equal("inventory_item.not_found", result.Error.Code);
         Assert.Equal(AppErrorType.NotFound, result.Error.Type);
         Assert.Equal("No inventory item found for the specified product.", result.Error.Message);
-        repositoryMock.Verify(
-            repository => repository.UpdateAsync(It.IsAny<InventoryItem>(), It.IsAny<CancellationToken>()),
-            Times.Never);
     }
 
     [Fact]
@@ -69,10 +73,12 @@ public sealed class IncreaseInventoryItemStockUseCaseTests
 
         var repositoryMock = new Mock<IInventoryItemRepository>();
         repositoryMock
-            .Setup(repository => repository.GetByProductIdAsync(inventoryItem.ProductId, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetByProductIdForUpdateAsync(
+                inventoryItem.ProductId,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(inventoryItem);
 
-        var useCase = new IncreaseInventoryItemStockUseCase(repositoryMock.Object);
+        var useCase = new IncreaseInventoryItemStockUseCase(repositoryMock.Object, new ImmediateUnitOfWork());
 
         var result = await useCase.ExecuteAsync(
             new IncreaseInventoryItemStockInput(inventoryItem.ProductId, 0),
@@ -83,8 +89,18 @@ public sealed class IncreaseInventoryItemStockUseCaseTests
         Assert.Equal("inventory_item.invalid", result.Error.Code);
         Assert.Equal(AppErrorType.Validation, result.Error.Type);
         Assert.Equal("Increase quantity must be greater than zero.", result.Error.Message);
-        repositoryMock.Verify(
-            repository => repository.UpdateAsync(It.IsAny<InventoryItem>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+    }
+
+    private sealed class ImmediateUnitOfWork : IUnitOfWork
+    {
+        public int ExecutionCount { get; private set; }
+
+        public async Task<Result<T>> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<Result<T>>> operation,
+            CancellationToken cancellationToken)
+        {
+            ExecutionCount++;
+            return await operation(cancellationToken);
+        }
     }
 }

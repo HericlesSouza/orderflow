@@ -36,6 +36,20 @@ public class InventoryItemRepository(OrderFlowDbContext dbContext) : IInventoryI
             .FirstOrDefaultAsync(inventoryItem => inventoryItem.ProductId == productId, cancellationToken);
     }
 
+    public async Task<InventoryItem?> GetByProductIdForUpdateAsync(
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.InventoryItems
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM inventory_items
+                WHERE product_id = {productId}
+                FOR UPDATE
+                """)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<InventoryItem>> GetByProductIdsForUpdateAsync(
         IReadOnlyCollection<Guid> productIds,
         CancellationToken cancellationToken)
@@ -53,9 +67,4 @@ public class InventoryItemRepository(OrderFlowDbContext dbContext) : IInventoryI
             .ToArrayAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(InventoryItem inventoryItem, CancellationToken cancellationToken)
-    {
-        dbContext.InventoryItems.Update(inventoryItem);
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
 }
