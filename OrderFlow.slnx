@@ -11,6 +11,7 @@
     <Project Path="src/OrderFlow.Infrastructure/OrderFlow.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/OrderFlow.Tests/OrderFlow.Tests.csproj" />
+    <Project Path="tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj" />
+    <Project Path="tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,7 @@
+{
+  "xUnit": {
+    "methodDisplay": "classAndMethod",
+    "methodDisplayOptions": "replaceUnderscoreWithSpace,removeAsyncSuffix",
+    "parallelMode": "collections"
+  }
+}
