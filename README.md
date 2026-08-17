@@ -21,7 +21,7 @@ Resumo atual:
 - Estoque: criação, consulta e aumento, com proteção contra aumentos e reservas concorrentes
 - Pedidos: criação, consulta por ID e cancelamento, com reserva/liberação atômica de estoque
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Suíte validada com 127 testes aprovados usando PostgreSQL real nos testes de integração
+- Suíte validada com 130 testes: 82 unitários/arquiteturais e 48 integrados com PostgreSQL real
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
 
@@ -45,7 +45,7 @@ Este projeto tem como objetivo praticar e demonstrar:
 - Entity Framework Core 10
 - PostgreSQL 16
 - Docker / Docker Compose
-- xUnit
+- xUnit v3 com Microsoft Testing Platform
 - Testcontainers
 
 Planejado para fases posteriores:
@@ -158,6 +158,40 @@ Mantenha o Docker ativo porque os testes de integração criam um PostgreSQL rea
 ```bash
 dotnet test OrderFlow.slnx
 ```
+
+A suíte está separada por responsabilidade:
+
+```bash
+# Não depende de Docker
+dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj
+
+# Depende do Docker para criar o PostgreSQL efêmero
+dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj
+```
+
+Nos testes unitários, builders de domínio mantêm defaults válidos e dados incidentais determinísticos; fixtures locais concentram mocks apenas nos casos de uso com setup repetitivo. Nos testes integrados, uma fixture de assembly compartilha um único container PostgreSQL, cria um banco por feature, aplica migrations e usa Respawn antes de cada teste.
+
+As classes da mesma feature pertencem à mesma collection e executam em série; Products, Inventory e Orders usam bancos distintos e podem executar em paralelo. A preparação de cenários integrados é feita por builders persistentes específicos.
+
+Os projetos usam xUnit v3 com Microsoft Testing Platform. É possível filtrar por traits de categoria, camada e feature:
+
+```bash
+dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Category=Unit]'
+dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Layer=Domain]'
+dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Feature=Products]'
+dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Category=Integration]'
+dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Layer=Api]'
+dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Feature=Orders]'
+```
+
+Para gerar cobertura em formato Cobertura:
+
+```bash
+dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj --coverlet --coverlet-output-format cobertura --coverlet-file-prefix unit
+dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj --coverlet --coverlet-output-format cobertura --coverlet-file-prefix integration
+```
+
+O relatório é criado em `TestResults/`.
 
 ### 6. Verificar a formatação
 

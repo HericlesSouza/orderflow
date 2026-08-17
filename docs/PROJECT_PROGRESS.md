@@ -2,7 +2,7 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-07-19
+- Ultima atualizacao: 2026-08-17
 - Fase atual: Fase 7 - Pagamentos
 - Foco atual: MVP estabilizado e pronto para iniciar o fluxo de pagamento simulado
 - Proximo marco concreto: definir o contrato do primeiro fluxo de pagamento e confirmar ou rejeitar um pedido de forma consistente
@@ -17,13 +17,13 @@
 
 ## Snapshot de Validacao
 
-- SDK .NET validado: `10.0.302`
+- SDK .NET validado: `10.0.400`
 - Entity Framework CLI local: `10.0.9`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 127 aprovados
-- Testes de integracao implementados hoje: fluxos de Products e Inventory, mais criacao, consulta e cancelamento de pedidos, rollback, preco historico, concorrencia de reserva e concorrencia entre alteracoes de estoque, usando PostgreSQL real via Testcontainers
+- Testes totais: 130 aprovados (`82` unitarios/arquiteturais e `48` integrados)
+- Testes de integracao: fluxos de Products, Inventory e Orders, incluindo rollback, preco historico e concorrencia, usando PostgreSQL real via um Testcontainer, bancos isolados por feature, migrations e reset por Respawn
 - Observacoes de ambiente:
-  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-07-19
+  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-08-17
   - build e execucao da suite passaram no ambiente atual
   - os testes de integracao dependem de Docker acessivel no ambiente
 
@@ -158,6 +158,9 @@ Status: `Pendente`
 
 ## Historico de Atualizacoes
 
+- 2026-08-17 - Refatoracao da suite finalizada com namespaces por camada/feature/caso de uso, fixtures unitarias locais, API de dados com builders persistentes, traits completos e teardown explicito dos bancos integrados.
+- 2026-08-17 - Suite separada em `OrderFlow.UnitTests` e `OrderFlow.IntegrationTests`, migrada para xUnit v3/MTP e organizada com traits, builders deterministicas e theories tipadas.
+- 2026-08-17 - Testes integrados passaram a compartilhar um PostgreSQL Testcontainer, com bancos isolados por feature e limpeza por Respawn; suite validada com 130 testes.
 - 2026-07-19 - Estabilizado o MVP: aumento de estoque protegido por transacao e `FOR UPDATE`, cancelamento repetido retornando `order.cannot_cancel` e codigos de erro expostos em `ProblemDetails`.
 - 2026-07-19 - Adicionado `dotnet-ef` `10.0.9` como ferramenta local, documentado o bootstrap completo do banco e normalizada a formatacao do repositorio.
 - 2026-07-19 - Suite completa validada com .NET SDK `10.0.302`: build sem avisos/erros e 127 testes aprovados com PostgreSQL via Testcontainers.

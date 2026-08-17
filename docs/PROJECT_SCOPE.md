@@ -266,7 +266,8 @@ OrderFlow.Api
 OrderFlow.Application
 OrderFlow.Domain
 OrderFlow.Infrastructure
-OrderFlow.Tests
+OrderFlow.UnitTests
+OrderFlow.IntegrationTests
 ```
 
 ## Estrutura Planejada
@@ -278,7 +279,8 @@ OrderFlow.Domain
 OrderFlow.Infrastructure
 OrderFlow.Contracts
 OrderFlow.Worker
-OrderFlow.Tests
+OrderFlow.UnitTests
+OrderFlow.IntegrationTests
 ```
 
 ## Responsabilidade das Camadas
@@ -291,7 +293,8 @@ OrderFlow.Tests
 | OrderFlow.Infrastructure | EF Core, PostgreSQL, repositórios, integrações externas |
 | OrderFlow.Contracts | Contratos de eventos e mensagens |
 | OrderFlow.Worker | Processamento assíncrono e consumers |
-| OrderFlow.Tests | Testes unitários e de integração |
+| OrderFlow.UnitTests | Testes de domínio, aplicação, API isolada e arquitetura |
+| OrderFlow.IntegrationTests | Testes HTTP, persistência, transações e concorrência com PostgreSQL real |
 
 ## Roadmap de Desenvolvimento
 
