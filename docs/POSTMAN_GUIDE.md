@@ -27,7 +27,7 @@ Para importá-la no Postman Desktop:
 3. Escolha o arquivo `postman/OrderFlow.postman_collection.json` ou arraste-o para a janela de importação.
 4. Confirme que a coleção **OrderFlow Local - Complete API Flows** apareceu na barra lateral.
 
-A coleção importada contém 64 requisições organizadas em seis pastas, incluindo preparação de dados, caminhos felizes, erros e concorrência. Ela usa variáveis da própria coleção e, por isso, não exige a criação de um environment separado. Execute as pastas na ordem numérica para rodar o fluxo completo.
+A coleção importada contém 77 requisições organizadas em sete pastas, incluindo preparação de dados, caminhos felizes, erros, concorrência e aprovação de pagamento. Ela usa variáveis da própria coleção e, por isso, não exige a criação de um environment separado. Execute as pastas na ordem numérica para rodar o fluxo completo.
 
 As seções seguintes também ensinam a montar os mesmos fluxos manualmente usando um environment. Se você importar a coleção pronta, pode pular a criação manual descrita na seção 3.
 
@@ -49,8 +49,9 @@ Consulte a documentação oficial do Postman sobre [importação de coleções](
 | Pedidos | `POST` | `/orders` | Cria um pedido e reserva estoque |
 | Pedidos | `GET` | `/orders/{id}` | Consulta um pedido e seus itens |
 | Pedidos | `POST` | `/orders/{id}/cancel` | Cancela o pedido e libera suas reservas |
+| Pagamentos | `POST` | `/payments/{orderId}/approve` | Confirma o pedido mantendo suas reservas |
 
-Total: **12 endpoints**.
+Total: **13 endpoints**.
 
 ## 2. Preparação do ambiente local
 
@@ -1696,16 +1697,15 @@ O domínio possui quatro estados:
 | `Cancelled` | Pedido cancelado |
 | `PaymentRejected` | Pagamento rejeitado |
 
-Atualmente, todo pedido nasce como `PendingPayment` e somente o cancelamento está exposto pela API.
+Atualmente, todo pedido nasce como `PendingPayment`. Cancelamento e aprovação de pagamento estão expostos pela API. Aprovação mantém as reservas para uma futura expedição; não reduz a quantidade física.
 
-Ainda **não existem endpoints** para:
+Ainda **não existe endpoint** para:
 
 ```http
-POST /payments/{orderId}/approve
 POST /payments/{orderId}/reject
 ```
 
-Por isso, não é possível criar pedidos `Confirmed` ou `PaymentRejected` pelo Postman nesta versão. Os métodos de domínio que confirmam e rejeitam pagamento já existem, mas os casos de uso e endpoints pertencem à próxima fase do projeto.
+É possível obter pedidos `Confirmed` usando aprovação. O estado `PaymentRejected` ainda é preparado diretamente nos testes automatizados; sua operação HTTP pertence ao próximo incremento.
 
 Também não existe API para provocar intencionalmente inconsistência entre pedido e reserva. A proteção contra estoque inconsistente no cancelamento é coberta pelos testes automatizados, não por um fluxo público.
 
@@ -1725,6 +1725,7 @@ Também não existe API para provocar intencionalmente inconsistência entre ped
 | `order.insufficient_inventory` | `409` | Quantidade disponível não atende ao pedido |
 | `order.invalid` | `400` | Proteção da aplicação contra pedido inválido; normalmente antecipada pelo validador HTTP |
 | `order.cannot_cancel` | `409` | Pedido já cancelado ou em estado que não permite cancelamento |
+| `payment.order_not_pending` | `409` | Aprovação de pedido confirmado, cancelado ou rejeitado |
 | `order.inventory_inconsistent` | `409` | Reserva necessária ao cancelamento está ausente ou insuficiente |
 
 ## 9. Checklist final
@@ -1757,5 +1758,56 @@ Use esta lista para confirmar que todo o comportamento público atual foi exerci
 - [ ] Dois aumentos concorrentes
 - [ ] Aumento concorrente com reserva
 - [ ] Disputa concorrente pela última unidade
+- [ ] Aprovação de pagamento e consulta do pedido confirmado
+- [ ] Estoque preservado após aprovação
+- [ ] Aprovação repetida, pedido inexistente e aprovação após cancelamento
+- [ ] Cancelamento após aprovação
 
 Ao concluir a lista, todos os endpoints e comportamentos funcionais expostos pela versão atual da aplicação terão sido percorridos.
+
+## 10. Aprovação de pagamento simulado
+
+Na coleção pronta, execute a pasta **06 - Payment approval** desde a primeira requisição. Ela cria um produto de preço 100, estoque 5 e pedido de 2 unidades, usando as variáveis de coleção `paymentProductId`, `paymentOrderId` e `cancelledPaymentOrderId`. Os scripts capturam os IDs automaticamente.
+
+Selecione **No environment** para usar os valores da coleção sem sobreposição dos IDs de um environment anterior. Cada execução completa da pasta cria novos dados. Reexecutar somente uma mutação pode mudar os resultados esperados das próximas requisições.
+
+### 10.1. Aprovar e consultar
+
+Com o pedido pendente criado pelas três primeiras requisições da pasta:
+
+```http
+POST {{baseUrl}}/payments/{{paymentOrderId}}/approve
+Accept: application/json
+```
+
+Não envie corpo. A resposta é `200 OK`, com o mesmo formato de `OrderResponse` da consulta de pedidos: status `Confirmed`, total 200, preço unitário 100 e `cancelledAt: null`.
+
+Script pós-resposta (já incluído na coleção):
+
+```javascript
+pm.test("Pedido confirmado", () => {
+    pm.response.to.have.status(200);
+    const body = pm.response.json();
+    pm.expect(body.status).to.eql("Confirmed");
+    pm.expect(body.totalAmount).to.eql(200);
+    pm.expect(body.items[0].unitPrice).to.eql(100);
+    pm.expect(body.cancelledAt).to.eql(null);
+});
+```
+
+Consulte `GET {{baseUrl}}/orders/{{paymentOrderId}}` para confirmar a persistência. Consulte `GET {{baseUrl}}/inventory/items/{{paymentProductId}}`: as quantidades continuam sendo físico 5, reservado 2 e disponível 3. A aprovação não revalida o preço ou a ativação atual do produto; usa o pedido já criado.
+
+### 10.2. Erros e transições inválidas
+
+Todas as requisições abaixo estão prontas na mesma pasta, com testes de status e código de erro:
+
+| Cenário | Requisição sem corpo | Resultado |
+|---|---|---|
+| Aprovação repetida | `POST /payments/{{paymentOrderId}}/approve` | `409 payment.order_not_pending` |
+| Pedido inexistente | `POST /payments/{{notFoundId}}/approve` | `404 order.not_found` |
+| Cancelar pedido confirmado | `POST /orders/{{paymentOrderId}}/cancel` | `409 order.cannot_cancel` |
+| Aprovar pedido cancelado | `POST /payments/{{cancelledPaymentOrderId}}/approve` | `409 payment.order_not_pending` |
+
+Para o último cenário, as requisições 10 e 11 criam outro pedido de uma unidade do produto exclusivo e o cancelam, salvando seu ID em `cancelledPaymentOrderId`. A consulta final verifica que as duas unidades do primeiro pedido continuam reservadas.
+
+Uma segunda aprovação retorna conflito inclusive em disputa simultânea. Aprovação concorrente com cancelamento permite somente uma transição: se a aprovação vencer, as reservas permanecem; se o cancelamento vencer, as reservas daquele pedido são liberadas. Esses cenários são verificados pela suíte de integração com PostgreSQL.

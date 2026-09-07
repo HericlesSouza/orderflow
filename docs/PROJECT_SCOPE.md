@@ -200,9 +200,12 @@ stateDiagram-v2
 
 ### Pagamentos
 
-Regras planejadas para fase posterior:
+Primeiro incremento implementado: aprovação simulada. Rejeição permanece planejada.
 
 - Pagamento aprovado deve confirmar o pedido.
+- Aprovação aceita somente `PendingPayment` e mantém estoque físico, reservado e disponível inalterados até uma futura expedição.
+- Aprovação repetida retorna conflito; aprovação e cancelamento concorrentes permitem somente uma transição vencedora.
+- O pedido conserva preços históricos, itens e datas. Aprovação não revalida preço ou ativação atual dos produtos.
 - Pagamento rejeitado deve marcar o pedido como rejeitado.
 - Pagamento rejeitado deve liberar o estoque reservado.
 - Um pedido já confirmado não pode receber novo pagamento.
@@ -236,6 +239,16 @@ GET /orders/{id}
 POST /orders/{id}/cancel
 ```
 
+## Aprovação de pagamento implementada
+
+`POST /payments/{orderId:guid}/approve`, sem corpo e sem autenticação nesta aplicação de estudo.
+
+- `200`: retorna o contrato de resposta de pedido existente com status `Confirmed`.
+- `404`: `order.not_found`.
+- `409`: `payment.order_not_pending` para pedidos confirmados, cancelados ou rejeitados.
+
+Usa a transação e o bloqueio de pedido existentes. Não há entidade de pagamento, nova tabela ou migration neste incremento. A baixa física será definida em uma futura etapa de expedição.
+
 ## Endpoints Planejados
 
 ### Autenticação
@@ -248,7 +261,6 @@ POST /auth/login
 ### Pagamentos
 
 ```http
-POST /payments/{orderId}/approve
 POST /payments/{orderId}/reject
 ```
 

@@ -2,13 +2,15 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-08-17
+- Ultima atualizacao: 2026-09-07
 - Fase atual: Fase 7 - Pagamentos
-- Foco atual: MVP estabilizado e pronto para iniciar o fluxo de pagamento simulado
-- Proximo marco concreto: definir o contrato do primeiro fluxo de pagamento e confirmar ou rejeitar um pedido de forma consistente
+- Foco atual: aprovacao de pagamento simulado implementada; Fase 7 em andamento
+- Proximo marco concreto: rejeitar pagamento com liberacao atomica de estoque
+- Aprovacao: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo as reservas para futura expedicao, sem migration ou entidade Payment.
+- Erros de aprovacao: `404 order.not_found` e `409 payment.order_not_pending`. Aprovacao repetida retorna conflito.
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}` e `POST /orders/{id}/cancel`
-  - Application implementada hoje: fluxos de Products e Inventory, mais criacao, consulta por id e cancelamento de pedidos com validacao de produto e estoque
+  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}`, `POST /orders/{id}/cancel` e `POST /payments/{orderId}/approve`
+  - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta e cancelamento de pedidos, e aprovacao simulada com bloqueio transacional do pedido
   - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
   - A solucao possui tratamento centralizado de erros com `AppError`, `Result<T>` tipado, traducao HTTP por tipo e codigo estavel em `ProblemDetails`
   - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; o cancelamento libera as reservas e atualiza o status na mesma transacao
@@ -20,10 +22,10 @@
 - SDK .NET validado: `10.0.400`
 - Entity Framework CLI local: `10.0.9`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 130 aprovados (`82` unitarios/arquiteturais e `48` integrados)
+- Testes totais: 147 aprovados (`91` unitarios/arquiteturais e `56` integrados)
 - Testes de integracao: fluxos de Products, Inventory e Orders, incluindo rollback, preco historico e concorrencia, usando PostgreSQL real via um Testcontainer, bancos isolados por feature, migrations e reset por Respawn
 - Observacoes de ambiente:
-  - `dotnet build OrderFlow.slnx` e `dotnet test OrderFlow.slnx` executados em 2026-08-17
+  - `dotnet build OrderFlow.slnx --no-restore` e `dotnet test OrderFlow.slnx --no-build --no-restore` executados em 2026-09-07
   - build e execucao da suite passaram no ambiente atual
   - os testes de integracao dependem de Docker acessivel no ambiente
 
@@ -121,13 +123,14 @@ Status: `Concluido`
 
 ### Fase 7 - Pagamentos
 
-Status: `Pendente`
+Status: `Em andamento`
 
-- [ ] Simular pagamento aprovado
+- [x] Simular pagamento aprovado
 - [ ] Simular pagamento rejeitado
-- [ ] Atualizar status do pedido
+- [x] Atualizar status para Confirmed na aprovacao
 - [ ] Liberar estoque em caso de rejeicao
-- [ ] Testar fluxo de pagamento
+- [x] Testar aprovacao, estados invalidos, reservas preservadas e concorrencia com cancelamento
+- [ ] Testar rejeicao de pagamento
 
 ### Fase 8 - Mensageria
 
@@ -151,13 +154,13 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Definir o contrato do fluxo de pagamento aprovado
-- Implementar a confirmacao de pedido apos pagamento aprovado
 - Implementar a rejeicao de pagamento com liberacao atomica de estoque
-- Criar testes unitarios e de integracao para os dois resultados de pagamento
+- Criar testes unitarios e de integracao para rejeicao e atualizar a colecao Postman
+- Definir futuramente o fluxo de expedicao para consumir reservas e dar baixa fisica
 
 ## Historico de Atualizacoes
 
+- 2026-09-07 - Aprovacao simulada implementada com reservas preservadas e bloqueio de pedido; 147 testes aprovados, incluindo disputa entre aprovacao e cancelamento. Colecao Postman ampliada para 77 requisicoes e 13 endpoints.
 - 2026-08-17 - Refatoracao da suite finalizada com namespaces por camada/feature/caso de uso, fixtures unitarias locais, API de dados com builders persistentes, traits completos e teardown explicito dos bancos integrados.
 - 2026-08-17 - Suite separada em `OrderFlow.UnitTests` e `OrderFlow.IntegrationTests`, migrada para xUnit v3/MTP e organizada com traits, builders deterministicas e theories tipadas.
 - 2026-08-17 - Testes integrados passaram a compartilhar um PostgreSQL Testcontainer, com bancos isolados por feature e limpeza por Respawn; suite validada com 130 testes.
