@@ -16,6 +16,23 @@ Ao final, você terá exercitado:
 
 > A API não possui autenticação. Não é necessário configurar token ou header `Authorization`.
 
+## Coleção pronta para importação
+
+Uma coleção Postman v2.1 autocontida está disponível em [`postman/OrderFlow.postman_collection.json`](../postman/OrderFlow.postman_collection.json).
+
+Para importá-la no Postman Desktop:
+
+1. Abra o workspace local desejado.
+2. Selecione **Import**.
+3. Escolha o arquivo `postman/OrderFlow.postman_collection.json` ou arraste-o para a janela de importação.
+4. Confirme que a coleção **OrderFlow Local - Complete API Flows** apareceu na barra lateral.
+
+A coleção importada contém 64 requisições organizadas em seis pastas, incluindo preparação de dados, caminhos felizes, erros e concorrência. Ela usa variáveis da própria coleção e, por isso, não exige a criação de um environment separado. Execute as pastas na ordem numérica para rodar o fluxo completo.
+
+As seções seguintes também ensinam a montar os mesmos fluxos manualmente usando um environment. Se você importar a coleção pronta, pode pular a criação manual descrita na seção 3.
+
+Consulte a documentação oficial do Postman sobre [importação de coleções](https://learning.postman.com/docs/getting-started/importing-and-exporting/importing-data/) caso a opção **Import** tenha mudado de posição na interface.
+
 ## 1. Endpoints disponíveis
 
 | Área | Método | Endpoint | Resultado principal |
