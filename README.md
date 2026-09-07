@@ -22,7 +22,7 @@ Resumo atual:
 - Pedidos: criação, consulta por ID e cancelamento, com reserva/liberação atômica de estoque
 - Pagamentos: aprovação simulada com confirmação transacional e manutenção das reservas
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Suíte validada com 147 testes: 91 unitários/arquiteturais e 56 integrados com PostgreSQL real
+- Suíte validada com 164 testes, incluindo integração com PostgreSQL real
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
 
@@ -83,13 +83,12 @@ Planejado para fases posteriores:
 
 ### Pagamentos
 
-- Aprovar pagamento com `POST /payments/{orderId}/approve`, sem corpo
-- Confirmar somente pedidos pendentes; retornar `404 order.not_found` ou `409 payment.order_not_pending` nos erros esperados
-- Manter estoque reservado para futura expedição; aprovação repetida retorna conflito
+- Aprovar ou rejeitar pagamento com `POST /payments/{orderId}/approve` e `POST /payments/{orderId}/reject`, sem corpo
+- Aceitar somente pedidos pendentes; retornar `404 order.not_found` ou `409 payment.order_not_pending` nos erros esperados
+- Aprovação mantém estoque reservado para futura expedição; rejeição libera a reserva atomicamente
 
 ### Funcionalidades planejadas
 
-- Simular rejeição de pagamentos com liberação de reservas
 - Expedição com baixa física das unidades reservadas (etapa futura)
 - Publicar e processar eventos de forma assíncrona
 - Adicionar retries, outbox, idempotência e observabilidade
@@ -102,7 +101,7 @@ Planejado para fases posteriores:
 - Fase 4 - Pedidos: concluída
 - Fase 5 - Cancelamento: concluída
 - Fase 6 - Testes de integração: concluída
-- Fase 7 - Pagamentos: em andamento (aprovação implementada)
+- Fase 7 - Pagamentos: concluída (aprovação e rejeição implementadas)
 - Fase 8 - Mensageria: pendente
 - Fase 9 - Produção: pendente
 

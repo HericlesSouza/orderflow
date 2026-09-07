@@ -6,6 +6,7 @@ using OrderFlow.Application.Orders.Cancel;
 using OrderFlow.Application.Orders.Create;
 using OrderFlow.Application.Orders.GetById;
 using OrderFlow.Application.Payments.Approve;
+using OrderFlow.Application.Payments.Reject;
 using OrderFlow.Application.Products.Create;
 using OrderFlow.Application.Products.GetAll;
 using OrderFlow.Application.Products.GetById;
@@ -32,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<CancelOrderUseCase>();
         services.AddScoped<GetOrderByIdUseCase>();
         services.AddScoped<ApprovePaymentUseCase>();
+        services.AddScoped<RejectPaymentUseCase>();
 
         return services;
     }

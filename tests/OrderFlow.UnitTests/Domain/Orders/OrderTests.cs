@@ -117,6 +117,27 @@ public sealed class OrderTests
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Cancelled)]
     [InlineData(OrderStatus.PaymentRejected)]
+    public void Should_Preserve_Order_When_Rejecting_A_Non_Pending_Order(OrderStatus status)
+    {
+        var order = new OrderBuilder().Build();
+        switch (status)
+        {
+            case OrderStatus.Confirmed: order.ConfirmPayment(); break;
+            case OrderStatus.Cancelled: order.Cancel(); break;
+            case OrderStatus.PaymentRejected: order.RejectPayment(); break;
+        }
+        var cancelledAt = order.CancelledAt;
+
+        Assert.Throws<InvalidOperationException>(() => order.RejectPayment());
+
+        Assert.Equal(status, order.Status);
+        Assert.Equal(cancelledAt, order.CancelledAt);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Confirmed)]
+    [InlineData(OrderStatus.Cancelled)]
+    [InlineData(OrderStatus.PaymentRejected)]
     public void Should_Preserve_Order_When_Confirming_A_Non_Pending_Order(OrderStatus status)
     {
         var order = new OrderBuilder().Build();

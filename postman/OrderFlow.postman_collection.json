@@ -2700,7 +2700,7 @@
     },
     {
       "name": "06 - Payment approval",
-      "description": "Execute esta pasta em ordem. Cria seus próprios dados. A aprovação mantém reservas; rejeição e expedição são futuras. Use sem environment que sobrescreva os IDs da coleção.",
+      "description": "Execute esta pasta em ordem. Cria seus próprios dados. A aprovação mantém reservas; a rejeição está na próxima pasta e libera reservas. Use sem environment que sobrescreva os IDs da coleção.",
       "item": [
         {
           "name": "01 - Create payment product",
@@ -3114,6 +3114,219 @@
           ]
         }
       ]
+    },
+    {
+      "name": "07 - Payment rejection",
+      "description": "Execute esta pasta em ordem. Cria seus próprios dados. A rejeição libera a reserva, sem alterar o estoque físico. Use sem environment que sobrescreva os IDs da coleção.",
+      "item": [
+        {
+          "name": "01 - Create rejection product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rejeicao {{$guid}}\",\n  \"description\": \"Produto exclusivo de rejeicao\",\n  \"price\": 100\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                "if (pm.response.code === 201) pm.collectionVariables.set(\"rejectionProductId\", pm.response.json().id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "02 - Create rejection inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/inventory/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{rejectionProductId}}\",\n  \"quantity\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"] }
+          }]
+        },
+        {
+          "name": "03 - Create pending rejection order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{rejectionProductId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                "if (pm.response.code === 201) pm.collectionVariables.set(\"rejectionOrderId\", pm.response.json().id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "04 - Reject payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/payments/{{rejectionOrderId}}/reject"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                "pm.test(\"Pedido rejeitado com preço original\", () => {",
+                "    const body = pm.response.json();",
+                "    pm.expect(body.status).to.eql(\"PaymentRejected\");",
+                "    pm.expect(body.totalAmount).to.eql(200);",
+                "    pm.expect(body.items[0].unitPrice).to.eql(100);",
+                "    pm.expect(body.cancelledAt).to.eql(null);",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "05 - Get rejected order",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders/{{rejectionOrderId}}"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                "pm.test(\"Pedido rejeitado persistido\", () => pm.expect(pm.response.json().status).to.eql(\"PaymentRejected\"));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "06 - Verify released inventory",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/inventory/items/{{rejectionProductId}}"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                "pm.test(\"Reserva liberada\", () => {",
+                "    const body = pm.response.json();",
+                "    pm.expect(body.quantity).to.eql(5);",
+                "    pm.expect(body.reservedQuantity).to.eql(0);",
+                "    pm.expect(body.availableQuantity).to.eql(5);",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "07 - Repeat rejection",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/payments/{{rejectionOrderId}}/reject"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"payment.order_not_pending\"));"
+            ] }
+          }]
+        },
+        {
+          "name": "08 - Reject missing order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/payments/{{notFoundId}}/reject"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"order.not_found\"));"
+            ] }
+          }]
+        },
+        {
+          "name": "09 - Approve rejected order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/payments/{{rejectionOrderId}}/approve"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"payment.order_not_pending\"));"
+            ] }
+          }]
+        },
+        {
+          "name": "10 - Cancel rejected order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders/{{rejectionOrderId}}/cancel"
+          },
+          "response": [],
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"order.cannot_cancel\"));"
+            ] }
+          }]
+        }
+      ]
     }
   ],
   "variable": [
@@ -3213,6 +3426,16 @@
     },
     {
       "key": "cancelledPaymentOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rejectionProductId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rejectionOrderId",
       "value": "",
       "type": "string"
     }

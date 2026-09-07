@@ -61,10 +61,15 @@ public class Order
 
     public void RejectPayment()
     {
-        if (Status != OrderStatus.PendingPayment)
-            throw new InvalidOperationException("Only pending payment orders can be rejected.");
+        EnsurePaymentCanBeRejected();
 
         Status = OrderStatus.PaymentRejected;
+    }
+
+    public void EnsurePaymentCanBeRejected()
+    {
+        if (Status != OrderStatus.PendingPayment)
+            throw new InvalidOperationException("Only pending payment orders can be rejected.");
     }
 
     private static void Validate(IReadOnlyCollection<OrderItem> orderItems)

@@ -200,14 +200,15 @@ stateDiagram-v2
 
 ### Pagamentos
 
-Primeiro incremento implementado: aprovação simulada. Rejeição permanece planejada.
+Pagamentos simulados são expostos por ações explícitas de aprovação e rejeição.
 
 - Pagamento aprovado deve confirmar o pedido.
 - Aprovação aceita somente `PendingPayment` e mantém estoque físico, reservado e disponível inalterados até uma futura expedição.
 - Aprovação repetida retorna conflito; aprovação e cancelamento concorrentes permitem somente uma transição vencedora.
 - O pedido conserva preços históricos, itens e datas. Aprovação não revalida preço ou ativação atual dos produtos.
 - Pagamento rejeitado deve marcar o pedido como rejeitado.
-- Pagamento rejeitado deve liberar o estoque reservado.
+- Rejeição aceita somente `PendingPayment`, libera o estoque reservado atomicamente e não altera quantidade física.
+- Rejeição repetida retorna conflito; rejeição concorrente com aprovação ou cancelamento permite somente uma transição vencedora.
 - Um pedido já confirmado não pode receber novo pagamento.
 - Um pedido cancelado não pode receber pagamento.
 
@@ -239,7 +240,7 @@ GET /orders/{id}
 POST /orders/{id}/cancel
 ```
 
-## Aprovação de pagamento implementada
+## Pagamentos simulados implementados
 
 `POST /payments/{orderId:guid}/approve`, sem corpo e sem autenticação nesta aplicação de estudo.
 
@@ -249,6 +250,14 @@ POST /orders/{id}/cancel
 
 Usa a transação e o bloqueio de pedido existentes. Não há entidade de pagamento, nova tabela ou migration neste incremento. A baixa física será definida em uma futura etapa de expedição.
 
+`POST /payments/{orderId:guid}/reject`, sem corpo e sem autenticação nesta aplicação de estudo.
+
+- `200`: retorna o contrato de resposta de pedido existente com status `PaymentRejected`.
+- `404`: `order.not_found`.
+- `409`: `payment.order_not_pending` para pedidos confirmados, cancelados ou já rejeitados.
+
+Rejeitar libera as reservas dos itens na mesma transação e não altera a quantidade física. Se a reserva estiver ausente ou insuficiente, retorna `409 order.inventory_inconsistent` e não altera o pedido.
+
 ## Endpoints Planejados
 
 ### Autenticação
@@ -256,12 +265,6 @@ Usa a transação e o bloqueio de pedido existentes. Não há entidade de pagame
 ```http
 POST /auth/register
 POST /auth/login
-```
-
-### Pagamentos
-
-```http
-POST /payments/{orderId}/reject
 ```
 
 ### Relatórios

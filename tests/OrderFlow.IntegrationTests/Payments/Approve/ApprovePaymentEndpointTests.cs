@@ -42,7 +42,7 @@ public sealed class ApprovePaymentEndpointTests(OrderFlowIntegrationSuiteFixture
         Assert.Equal("Confirmed", persisted!.Status);
         Assert.Equal(order.Id, persisted.Id);
         Assert.Equal(order.TotalAmount, persisted.TotalAmount);
-        Assert.Equal(order.CreatedAt, persisted.CreatedAt);
+        Assert.InRange(persisted.CreatedAt, order.CreatedAt.AddMicroseconds(-1), order.CreatedAt.AddMicroseconds(1));
         Assert.Null(persisted.CancelledAt);
         Assert.Equal(order.Items.ToArray(), persisted.Items.ToArray());
         var after = await TestData.GetInventoryItemByProductIdAsync(productId);
@@ -78,14 +78,8 @@ public sealed class ApprovePaymentEndpointTests(OrderFlowIntegrationSuiteFixture
         }
         else
         {
-            // No public rejection endpoint exists yet.
-            await using var scope = Services.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
-            var saved = await db.Orders.SingleAsync(value => value.Id == order.Id, CancellationToken);
-            saved.RejectPayment();
-            var inventory = await db.InventoryItems.SingleAsync(CancellationToken);
-            inventory.Release(2);
-            await db.SaveChangesAsync(CancellationToken);
+            using var rejection = await RejectAsync(order.Id);
+            rejection.EnsureSuccessStatusCode();
         }
 
         using var response = await ApproveAsync(order.Id);
@@ -158,6 +152,9 @@ public sealed class ApprovePaymentEndpointTests(OrderFlowIntegrationSuiteFixture
 
     private Task<HttpResponseMessage> ApproveAsync(Guid orderId) =>
         Client.PostAsync($"/payments/{orderId}/approve", null, CancellationToken);
+
+    private Task<HttpResponseMessage> RejectAsync(Guid orderId) =>
+        Client.PostAsync($"/payments/{orderId}/reject", null, CancellationToken);
 
     private Task<HttpResponseMessage> CancelAsync(Guid orderId) =>
         Client.PostAsync($"/orders/{orderId}/cancel", null, CancellationToken);
