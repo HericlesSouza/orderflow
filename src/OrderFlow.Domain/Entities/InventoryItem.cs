@@ -60,6 +60,19 @@ public class InventoryItem
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void Dispatch(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Dispatch quantity must be greater than zero.");
+
+        if (quantity > Quantity || quantity > ReservedQuantity)
+            throw new InvalidOperationException("Not enough reserved quantity to dispatch.");
+
+        Quantity -= quantity;
+        ReservedQuantity -= quantity;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     private static void Validate(Guid productId, int quantity)
     {
         if (productId == Guid.Empty)

@@ -10,6 +10,7 @@ Ao final, você terá exercitado:
 - criação e consulta de pedidos com reserva de estoque;
 - preservação do preço histórico do pedido;
 - cancelamento com liberação de estoque;
+- expedição integral com baixa física do estoque reservado;
 - validações e erros de negócio;
 - rollback de reservas;
 - proteção contra alterações concorrentes de estoque.
@@ -27,7 +28,7 @@ Para importá-la no Postman Desktop:
 3. Escolha o arquivo `postman/OrderFlow.postman_collection.json` ou arraste-o para a janela de importação.
 4. Confirme que a coleção **OrderFlow Local - Complete API Flows** apareceu na barra lateral.
 
-A coleção importada contém 87 requisições organizadas em oito pastas, incluindo preparação de dados, caminhos felizes, erros, concorrência, aprovação e rejeição de pagamento. Ela usa variáveis da própria coleção e, por isso, não exige a criação de um environment separado. Execute as pastas na ordem numérica para rodar o fluxo completo.
+A coleção importada contém 99 requisições organizadas em nove pastas, incluindo preparação de dados, caminhos felizes, erros, concorrência, pagamentos e expedição. Ela usa variáveis da própria coleção e, por isso, não exige a criação de um environment separado. Execute as pastas na ordem numérica para rodar o fluxo completo.
 
 As seções seguintes também ensinam a montar os mesmos fluxos manualmente usando um environment. Se você importar a coleção pronta, pode pular a criação manual descrita na seção 3.
 
@@ -49,10 +50,11 @@ Consulte a documentação oficial do Postman sobre [importação de coleções](
 | Pedidos | `POST` | `/orders` | Cria um pedido e reserva estoque |
 | Pedidos | `GET` | `/orders/{id}` | Consulta um pedido e seus itens |
 | Pedidos | `POST` | `/orders/{id}/cancel` | Cancela o pedido e libera suas reservas |
+| Pedidos | `POST` | `/orders/{id}/dispatch` | Expede pedido confirmado e baixa estoque físico |
 | Pagamentos | `POST` | `/payments/{orderId}/approve` | Confirma o pedido mantendo suas reservas |
 | Pagamentos | `POST` | `/payments/{orderId}/reject` | Rejeita o pedido e libera suas reservas |
 
-Total: **14 endpoints**.
+Total: **15 endpoints**.
 
 ## 2. Preparação do ambiente local
 
@@ -1689,7 +1691,7 @@ O bloqueio pessimista da linha de estoque impede que os dois pedidos reservem a 
 
 ## 7. Estados de pedido e limitações atuais
 
-O domínio possui quatro estados:
+O domínio possui cinco estados:
 
 | Estado | Significado |
 |---|---|
@@ -1697,8 +1699,9 @@ O domínio possui quatro estados:
 | `Confirmed` | Pagamento aprovado |
 | `Cancelled` | Pedido cancelado |
 | `PaymentRejected` | Pagamento rejeitado |
+| `Dispatched` | Pedido expedido integralmente |
 
-Atualmente, todo pedido nasce como `PendingPayment`. Cancelamento, aprovação e rejeição de pagamento estão expostos pela API. Aprovação mantém as reservas para uma futura expedição; rejeição libera a reserva sem reduzir a quantidade física.
+Atualmente, todo pedido nasce como `PendingPayment`. Cancelamento, aprovação, rejeição e expedição estão expostos pela API. Aprovação mantém as reservas até a expedição; rejeição libera a reserva sem reduzir a quantidade física. Expedição aceita somente pedido confirmado e reduz a quantidade física e a reserva pela mesma quantidade.
 
 Também não existe API para provocar intencionalmente inconsistência entre pedido e reserva. A proteção contra estoque inconsistente no cancelamento é coberta pelos testes automatizados, não por um fluxo público.
 
@@ -1718,8 +1721,9 @@ Também não existe API para provocar intencionalmente inconsistência entre ped
 | `order.insufficient_inventory` | `409` | Quantidade disponível não atende ao pedido |
 | `order.invalid` | `400` | Proteção da aplicação contra pedido inválido; normalmente antecipada pelo validador HTTP |
 | `order.cannot_cancel` | `409` | Pedido já cancelado ou em estado que não permite cancelamento |
+| `order.cannot_dispatch` | `409` | Pedido não confirmado ou já expedido |
 | `payment.order_not_pending` | `409` | Aprovação ou rejeição de pedido confirmado, cancelado ou rejeitado |
-| `order.inventory_inconsistent` | `409` | Reserva necessária ao cancelamento ou rejeição está ausente ou insuficiente |
+| `order.inventory_inconsistent` | `409` | Reserva necessária ao cancelamento, rejeição ou expedição está ausente ou insuficiente |
 
 ## 9. Checklist final
 
@@ -1757,6 +1761,8 @@ Use esta lista para confirmar que todo o comportamento público atual foi exerci
 - [ ] Cancelamento após aprovação
 - [ ] Rejeição de pagamento, consulta do pedido rejeitado e liberação de estoque
 - [ ] Rejeição repetida, pedido inexistente, aprovação e cancelamento após rejeição
+- [ ] Expedição, data `dispatchedAt` e baixa física do estoque reservado
+- [ ] Expedição repetida, pedido inexistente e transições inválidas após expedição
 
 Ao concluir a lista, todos os endpoints e comportamentos funcionais expostos pela versão atual da aplicação terão sido percorridos.
 
@@ -1819,3 +1825,16 @@ Accept: application/json
 Não envie corpo. A resposta é `200 OK` com status `PaymentRejected`, preserva itens, preços históricos, total e data de criação, e mantém `cancelledAt: null`. A consulta de estoque seguinte confirma: físico 5, reservado 0 e disponível 5.
 
 Rejeitar pedido inexistente retorna `404 order.not_found`. Rejeitar novamente, aprovar ou cancelar um pedido rejeitado retorna `409`: para as ações de pagamento, `payment.order_not_pending`; para o cancelamento, `order.cannot_cancel`. Rejeição concorrente com aprovação ou cancelamento permite somente uma transição; a suíte de integração verifica o estado persistido e que a reserva é liberada uma única vez.
+
+## 12. Expedição integral
+
+Na coleção pronta, execute a pasta **08 - Order dispatch** desde a primeira requisição. Ela cria produto, estoque e pedido exclusivos, aprova o pagamento e usa `dispatchProductId` e `dispatchOrderId`.
+
+```http
+POST {{baseUrl}}/orders/{{dispatchOrderId}}/dispatch
+Accept: application/json
+```
+
+Não envie corpo. A resposta `200 OK` retorna status `Dispatched` e `dispatchedAt`. Para o exemplo da coleção, antes da expedição o estoque é físico 5, reservado 2 e disponível 3; depois é físico 3, reservado 0 e disponível 3.
+
+Repetir a expedição ou tentar aprovar, rejeitar ou cancelar o pedido expedido retorna `409`. Pedido inexistente retorna `404 order.not_found`. Duas expedições simultâneas permitem apenas uma baixa; a suíte de integração também verifica uma expedição concorrente com aumento de estoque.

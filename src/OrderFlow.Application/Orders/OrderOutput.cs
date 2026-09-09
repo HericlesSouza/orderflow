@@ -8,6 +8,7 @@ public sealed record OrderOutput(
     decimal TotalAmount,
     DateTime CreatedAt,
     DateTime? CancelledAt,
+    DateTime? DispatchedAt,
     IReadOnlyCollection<OrderItemOutput> Items)
 {
     public static OrderOutput FromEntity(Order order)
@@ -18,6 +19,7 @@ public sealed record OrderOutput(
             order.TotalAmount,
             order.CreatedAt,
             order.CancelledAt,
+            order.DispatchedAt,
             order.OrderItems.Select(OrderItemOutput.FromEntity).ToArray());
     }
 }

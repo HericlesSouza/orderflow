@@ -3,17 +3,17 @@
 ## Resumo Atual
 
 - Ultima atualizacao: 2026-09-07
-- Fase atual: Fase 7 - Pagamentos
-- Foco atual: pagamentos simulados implementados; Fase 7 concluida
-- Proximo marco concreto: definir o fluxo de expedicao para baixar fisicamente o estoque reservado
+- Fase atual: Expedicao integral de pedidos
+- Foco atual: expedicao implementada; ciclo principal de pedido concluido
+- Proximo marco concreto: definir eventos assincronos para pagamentos e expedicao
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
-  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}`, `POST /orders/{id}/cancel`, `POST /payments/{orderId}/approve` e `POST /payments/{orderId}/reject`
-  - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta e cancelamento de pedidos, e pagamentos simulados com bloqueio transacional do pedido e estoque
+  - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}`, `POST /orders/{id}/cancel`, `POST /orders/{id}/dispatch`, `POST /payments/{orderId}/approve` e `POST /payments/{orderId}/reject`
+  - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta, cancelamento e expedicao de pedidos, e pagamentos simulados com bloqueio transacional do pedido e estoque
   - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
   - A solucao possui tratamento centralizado de erros com `AppError`, `Result<T>` tipado, traducao HTTP por tipo e codigo estavel em `ProblemDetails`
-  - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; o cancelamento libera as reservas e atualiza o status na mesma transacao
+  - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; cancelamento, rejeicao e expedicao atualizam pedido e reservas na mesma transacao
   - Aumento, reserva e liberacao de estoque usam transacoes e bloqueios de linha para preservar atualizacoes concorrentes
   - O preparo de um ambiente novo usa `dotnet-ef` local e aplicacao explicita das migrations
 
@@ -22,7 +22,7 @@
 - SDK .NET validado: `10.0.400`
 - Entity Framework CLI local: `10.0.9`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 164 aprovados
+- Testes totais: 196 aprovados
 - Testes de integracao: fluxos de Products, Inventory, Orders e Payments, incluindo rollback, preco historico e concorrencia, usando PostgreSQL real via um Testcontainer, bancos isolados por feature, migrations e reset por Respawn
 - Observacoes de ambiente:
   - `dotnet build OrderFlow.slnx --no-restore` e `dotnet test OrderFlow.slnx --no-build --no-restore` executados em 2026-09-07
@@ -158,6 +158,7 @@ Status: `Pendente`
 
 ## Historico de Atualizacoes
 
+- 2026-09-07 - Expedicao integral implementada: `POST /orders/{id}/dispatch` baixa estoque fisico e reserva para pedidos confirmados, registra `DispatchedAt` e usa migration; 196 testes aprovados. Colecao Postman ampliada para 99 requisicoes e 15 endpoints.
 - 2026-09-07 - Rejeicao simulada implementada com liberacao atomica de reservas, bloqueios transacionais e cobertura de concorrencia com aprovacao e cancelamento; 164 testes aprovados. Colecao Postman ampliada para 87 requisicoes e 14 endpoints.
 - 2026-09-07 - Aprovacao simulada implementada com reservas preservadas e bloqueio de pedido; 147 testes aprovados, incluindo disputa entre aprovacao e cancelamento. Colecao Postman ampliada para 77 requisicoes e 13 endpoints.
 - 2026-08-17 - Refatoracao da suite finalizada com namespaces por camada/feature/caso de uso, fixtures unitarias locais, API de dados com builders persistentes, traits completos e teardown explicito dos bancos integrados.

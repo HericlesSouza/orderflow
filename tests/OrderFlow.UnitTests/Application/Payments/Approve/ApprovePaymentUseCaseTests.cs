@@ -50,6 +50,7 @@ public sealed class ApprovePaymentUseCaseTests
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Cancelled)]
     [InlineData(OrderStatus.PaymentRejected)]
+    [InlineData(OrderStatus.Dispatched)]
     public async Task Should_Return_Conflict_Without_Changing_A_Non_Pending_Order(OrderStatus status)
     {
         var order = new OrderBuilder().Build();
@@ -58,6 +59,7 @@ public sealed class ApprovePaymentUseCaseTests
             case OrderStatus.Confirmed: order.ConfirmPayment(); break;
             case OrderStatus.Cancelled: order.Cancel(); break;
             case OrderStatus.PaymentRejected: order.RejectPayment(); break;
+            case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); break;
         }
         var repository = CreateRepository(order);
         var useCase = new ApprovePaymentUseCase(repository.Object, new ImmediateUnitOfWork());

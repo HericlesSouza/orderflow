@@ -8,6 +8,7 @@ public sealed record OrderResponse(
     decimal TotalAmount,
     DateTime CreatedAt,
     DateTime? CancelledAt,
+    DateTime? DispatchedAt,
     IReadOnlyCollection<OrderItemResponse> Items)
 {
     public static OrderResponse FromOutput(OrderOutput output)
@@ -18,6 +19,7 @@ public sealed record OrderResponse(
             output.TotalAmount,
             output.CreatedAt,
             output.CancelledAt,
+            output.DispatchedAt,
             output.Items.Select(OrderItemResponse.FromOutput).ToArray());
     }
 }

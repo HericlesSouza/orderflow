@@ -26,6 +26,7 @@ public sealed class OrderTests
         Assert.Equal(250.00m, order.TotalAmount);
         Assert.Equal(2, order.OrderItems.Count);
         Assert.Null(order.CancelledAt);
+        Assert.Null(order.DispatchedAt);
         Assert.InRange(order.CreatedAt, beforeCreation, afterCreation);
     }
 
@@ -94,6 +95,18 @@ public sealed class OrderTests
     }
 
     [Fact]
+    public void Should_Throw_InvalidOperationException_When_Cancelling_A_Dispatched_Order()
+    {
+        var order = new OrderBuilder().Build();
+        order.ConfirmPayment();
+        order.Dispatch();
+
+        var exception = Assert.Throws<InvalidOperationException>(order.Cancel);
+
+        Assert.Equal("Dispatched order cannot be cancelled.", exception.Message);
+    }
+
+    [Fact]
     public void Should_Confirm_Payment_When_Order_Is_PendingPayment()
     {
         var order = new OrderBuilder().Build();
@@ -113,10 +126,48 @@ public sealed class OrderTests
         Assert.Equal(OrderStatus.PaymentRejected, order.Status);
     }
 
+    [Fact]
+    public void Should_Dispatch_Order_When_Status_Is_Confirmed()
+    {
+        var order = new OrderBuilder().Build();
+        order.ConfirmPayment();
+        var beforeDispatch = DateTime.UtcNow;
+
+        order.Dispatch();
+
+        var afterDispatch = DateTime.UtcNow;
+        Assert.Equal(OrderStatus.Dispatched, order.Status);
+        Assert.NotNull(order.DispatchedAt);
+        Assert.InRange(order.DispatchedAt!.Value, beforeDispatch, afterDispatch);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.PendingPayment)]
+    [InlineData(OrderStatus.Cancelled)]
+    [InlineData(OrderStatus.PaymentRejected)]
+    [InlineData(OrderStatus.Dispatched)]
+    public void Should_Preserve_Order_When_Dispatching_A_Non_Confirmed_Order(OrderStatus status)
+    {
+        var order = new OrderBuilder().Build();
+        switch (status)
+        {
+            case OrderStatus.Cancelled: order.Cancel(); break;
+            case OrderStatus.PaymentRejected: order.RejectPayment(); break;
+            case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); break;
+        }
+        var dispatchedAt = order.DispatchedAt;
+
+        Assert.Throws<InvalidOperationException>(order.Dispatch);
+
+        Assert.Equal(status, order.Status);
+        Assert.Equal(dispatchedAt, order.DispatchedAt);
+    }
+
     [Theory]
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Cancelled)]
     [InlineData(OrderStatus.PaymentRejected)]
+    [InlineData(OrderStatus.Dispatched)]
     public void Should_Preserve_Order_When_Rejecting_A_Non_Pending_Order(OrderStatus status)
     {
         var order = new OrderBuilder().Build();
@@ -125,6 +176,7 @@ public sealed class OrderTests
             case OrderStatus.Confirmed: order.ConfirmPayment(); break;
             case OrderStatus.Cancelled: order.Cancel(); break;
             case OrderStatus.PaymentRejected: order.RejectPayment(); break;
+            case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); break;
         }
         var cancelledAt = order.CancelledAt;
 
@@ -138,6 +190,7 @@ public sealed class OrderTests
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Cancelled)]
     [InlineData(OrderStatus.PaymentRejected)]
+    [InlineData(OrderStatus.Dispatched)]
     public void Should_Preserve_Order_When_Confirming_A_Non_Pending_Order(OrderStatus status)
     {
         var order = new OrderBuilder().Build();
@@ -146,6 +199,7 @@ public sealed class OrderTests
             case OrderStatus.Confirmed: order.ConfirmPayment(); break;
             case OrderStatus.Cancelled: order.Cancel(); break;
             case OrderStatus.PaymentRejected: order.RejectPayment(); break;
+            case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); break;
         }
         var cancelledAt = order.CancelledAt;
         var total = order.TotalAmount;

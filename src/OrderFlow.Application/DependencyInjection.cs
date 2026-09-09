@@ -4,6 +4,7 @@ using OrderFlow.Application.InventoryItems.GetByProductId;
 using OrderFlow.Application.InventoryItems.Increase;
 using OrderFlow.Application.Orders.Cancel;
 using OrderFlow.Application.Orders.Create;
+using OrderFlow.Application.Orders.Dispatch;
 using OrderFlow.Application.Orders.GetById;
 using OrderFlow.Application.Payments.Approve;
 using OrderFlow.Application.Payments.Reject;
@@ -32,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<CreateOrderUseCase>();
         services.AddScoped<CancelOrderUseCase>();
         services.AddScoped<GetOrderByIdUseCase>();
+        services.AddScoped<DispatchOrderUseCase>();
         services.AddScoped<ApprovePaymentUseCase>();
         services.AddScoped<RejectPaymentUseCase>();
 

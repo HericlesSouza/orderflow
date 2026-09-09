@@ -50,6 +50,7 @@ public sealed class RejectPaymentUseCaseTests
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Cancelled)]
     [InlineData(OrderStatus.PaymentRejected)]
+    [InlineData(OrderStatus.Dispatched)]
     public async Task Should_Return_Conflict_Without_Releasing_Inventory_When_Order_Is_Not_Pending(OrderStatus status)
     {
         var productId = Guid.NewGuid();
@@ -61,6 +62,7 @@ public sealed class RejectPaymentUseCaseTests
             case OrderStatus.Confirmed: order.ConfirmPayment(); break;
             case OrderStatus.Cancelled: order.Cancel(); inventory.Release(2); break;
             case OrderStatus.PaymentRejected: order.RejectPayment(); inventory.Release(2); break;
+            case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); inventory.Dispatch(2); break;
         }
 
         var result = await CreateUseCase(order, [inventory]).ExecuteAsync(order.Id, CancellationToken.None);

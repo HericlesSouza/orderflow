@@ -4,6 +4,7 @@ using OrderFlow.Api.Common.Http;
 using OrderFlow.Api.Orders.Create;
 using OrderFlow.Application.Orders.Cancel;
 using OrderFlow.Application.Orders.Create;
+using OrderFlow.Application.Orders.Dispatch;
 using OrderFlow.Application.Orders.GetById;
 
 namespace OrderFlow.Api.Orders;
@@ -38,6 +39,15 @@ public static class OrderEndpoints
             .WithName("CancelOrder")
             .WithSummary("Cancels an order.")
             .WithDescription("Cancels a pending payment order and releases its reserved inventory atomically.")
+            .Produces<OrderResponse>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/{id:guid}/dispatch", DispatchOrderAsync)
+            .WithName("DispatchOrder")
+            .WithSummary("Dispatches a confirmed order.")
+            .WithDescription("Dispatches all order items and atomically deducts their reserved inventory.")
             .Produces<OrderResponse>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
@@ -93,6 +103,21 @@ public static class OrderEndpoints
     private static async Task<IResult> CancelOrderAsync(
         [FromRoute] Guid id,
         CancelOrderUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.ExecuteAsync(id, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.ToProblem();
+        }
+
+        return Results.Ok(OrderResponse.FromOutput(result.Value!));
+    }
+
+    private static async Task<IResult> DispatchOrderAsync(
+        [FromRoute] Guid id,
+        DispatchOrderUseCase useCase,
         CancellationToken cancellationToken)
     {
         var result = await useCase.ExecuteAsync(id, cancellationToken);

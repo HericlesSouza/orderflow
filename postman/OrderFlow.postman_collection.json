@@ -3327,6 +3327,111 @@
           }]
         }
       ]
+    },
+    {
+      "name": "08 - Order dispatch",
+      "description": "Execute em ordem. Cria dados exclusivos, aprova o pagamento e expede todos os itens. A expedição baixa estoque físico e encerra a reserva.",
+      "item": [
+        {
+          "name": "01 - Create dispatch product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/products",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Expedicao {{$guid}}\",\n  \"description\": \"Produto exclusivo de expedicao\",\n  \"price\": 100\n}", "options": { "raw": { "language": "json" } } }
+          },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set(\"dispatchProductId\", pm.response.json().id);"] } }]
+        },
+        {
+          "name": "02 - Create dispatch inventory",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/inventory/items",
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{dispatchProductId}}\",\n  \"quantity\": 5\n}", "options": { "raw": { "language": "json" } } }
+          },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"] } }]
+        },
+        {
+          "name": "03 - Create pending dispatch order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders",
+            "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{dispatchProductId}}\",\n      \"quantity\": 2\n    }\n  ]\n}", "options": { "raw": { "language": "json" } } }
+          },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set(\"dispatchOrderId\", pm.response.json().id);"] } }]
+        },
+        {
+          "name": "04 - Approve dispatch order",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/payments/{{dispatchOrderId}}/approve" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));", "pm.test(\"Pedido confirmado\", () => pm.expect(pm.response.json().status).to.eql(\"Confirmed\"));"] } }]
+        },
+        {
+          "name": "05 - Dispatch confirmed order",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/orders/{{dispatchOrderId}}/dispatch" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+            "pm.test(\"Pedido expedido\", () => {",
+            "    const body = pm.response.json();",
+            "    pm.expect(body.status).to.eql(\"Dispatched\");",
+            "    pm.expect(body.dispatchedAt).to.not.eql(null);",
+            "    pm.expect(body.totalAmount).to.eql(200);",
+            "    pm.expect(body.items[0].unitPrice).to.eql(100);",
+            "});"
+          ] } }]
+        },
+        {
+          "name": "06 - Get dispatched order",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/orders/{{dispatchOrderId}}" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));", "pm.test(\"Expedição persistida\", () => { const body = pm.response.json(); pm.expect(body.status).to.eql(\"Dispatched\"); pm.expect(body.dispatchedAt).to.not.eql(null); });"] } }]
+        },
+        {
+          "name": "07 - Verify dispatched inventory",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/inventory/items/{{dispatchProductId}}" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+            "pm.test(\"Estoque baixado e reserva encerrada\", () => { const body = pm.response.json(); pm.expect(body.quantity).to.eql(3); pm.expect(body.reservedQuantity).to.eql(0); pm.expect(body.availableQuantity).to.eql(3); });"
+          ] } }]
+        },
+        {
+          "name": "08 - Repeat dispatch",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/orders/{{dispatchOrderId}}/dispatch" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));", "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"order.cannot_dispatch\"));"] } }]
+        },
+        {
+          "name": "09 - Dispatch missing order",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/orders/{{notFoundId}}/dispatch" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));", "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"order.not_found\"));"] } }]
+        },
+        {
+          "name": "10 - Approve dispatched order",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/payments/{{dispatchOrderId}}/approve" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));", "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"payment.order_not_pending\"));"] } }]
+        },
+        {
+          "name": "11 - Reject dispatched order",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/payments/{{dispatchOrderId}}/reject" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));", "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"payment.order_not_pending\"));"] } }]
+        },
+        {
+          "name": "12 - Cancel dispatched order",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/orders/{{dispatchOrderId}}/cancel" },
+          "response": [],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));", "pm.test(\"Código de erro\", () => pm.expect(pm.response.json().code).to.eql(\"order.cannot_cancel\"));"] } }]
+        }
+      ]
     }
   ],
   "variable": [
@@ -3436,6 +3541,16 @@
     },
     {
       "key": "rejectionOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dispatchProductId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dispatchOrderId",
       "value": "",
       "type": "string"
     }

@@ -12,6 +12,7 @@ public class Order
     public IReadOnlyCollection<OrderItem> OrderItems => _orderItems.AsReadOnly();
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime? CancelledAt { get; private set; }
+    public DateTime? DispatchedAt { get; private set; }
 
     private Order() { }
 
@@ -49,6 +50,9 @@ public class Order
 
         if (Status == OrderStatus.PaymentRejected)
             throw new InvalidOperationException("Payment rejected order cannot be cancelled.");
+
+        if (Status == OrderStatus.Dispatched)
+            throw new InvalidOperationException("Dispatched order cannot be cancelled.");
     }
 
     public void ConfirmPayment()
@@ -70,6 +74,20 @@ public class Order
     {
         if (Status != OrderStatus.PendingPayment)
             throw new InvalidOperationException("Only pending payment orders can be rejected.");
+    }
+
+    public void Dispatch()
+    {
+        EnsureCanBeDispatched();
+
+        Status = OrderStatus.Dispatched;
+        DispatchedAt = DateTime.UtcNow;
+    }
+
+    public void EnsureCanBeDispatched()
+    {
+        if (Status != OrderStatus.Confirmed)
+            throw new InvalidOperationException("Only confirmed orders can be dispatched.");
     }
 
     private static void Validate(IReadOnlyCollection<OrderItem> orderItems)

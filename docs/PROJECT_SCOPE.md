@@ -153,6 +153,7 @@ Estados iniciais:
 | Confirmed | Pedido confirmado após pagamento aprovado |
 | Cancelled | Pedido cancelado |
 | PaymentRejected | Pedido com pagamento rejeitado |
+| Dispatched | Pedido expedido integralmente |
 
 Fluxo esperado:
 
@@ -162,9 +163,10 @@ stateDiagram-v2
     PendingPayment --> Confirmed
     PendingPayment --> Cancelled
     PendingPayment --> PaymentRejected
-    Confirmed --> [*]
+    Confirmed --> Dispatched
     Cancelled --> [*]
     PaymentRejected --> [*]
+    Dispatched --> [*]
 ```
 
 ## Regras de Negócio
@@ -197,6 +199,15 @@ stateDiagram-v2
 - Cancelar um pedido deve liberar o estoque reservado.
 - Pedido confirmado não pode ser cancelado pelo fluxo comum.
 - Pedido cancelado não pode ser cancelado novamente.
+- Pedido expedido não pode ser cancelado pelo fluxo comum.
+
+### Expedição
+
+- Somente pedido `Confirmed` pode ser expedido.
+- A primeira versão expede todos os itens do pedido; não há expedição parcial.
+- Expedir reduz a quantidade física e a reserva pela quantidade de cada item, mantendo a quantidade disponível inalterada.
+- Expedição registra `DispatchedAt` em UTC e preserva itens, preços históricos e total do pedido.
+- Expedição repetida ou em outro estado retorna conflito e não baixa estoque novamente.
 
 ### Pagamentos
 
@@ -238,6 +249,7 @@ GET /inventory/items/{productId}
 POST /orders
 GET /orders/{id}
 POST /orders/{id}/cancel
+POST /orders/{id}/dispatch
 ```
 
 ## Pagamentos simulados implementados
@@ -248,7 +260,7 @@ POST /orders/{id}/cancel
 - `404`: `order.not_found`.
 - `409`: `payment.order_not_pending` para pedidos confirmados, cancelados ou rejeitados.
 
-Usa a transação e o bloqueio de pedido existentes. Não há entidade de pagamento, nova tabela ou migration neste incremento. A baixa física será definida em uma futura etapa de expedição.
+Usa a transação e o bloqueio de pedido existentes. Não há entidade de pagamento ou tabela de pagamentos neste incremento.
 
 `POST /payments/{orderId:guid}/reject`, sem corpo e sem autenticação nesta aplicação de estudo.
 
@@ -257,6 +269,16 @@ Usa a transação e o bloqueio de pedido existentes. Não há entidade de pagame
 - `409`: `payment.order_not_pending` para pedidos confirmados, cancelados ou já rejeitados.
 
 Rejeitar libera as reservas dos itens na mesma transação e não altera a quantidade física. Se a reserva estiver ausente ou insuficiente, retorna `409 order.inventory_inconsistent` e não altera o pedido.
+
+## Expedição implementada
+
+`POST /orders/{id:guid}/dispatch`, sem corpo e sem autenticação nesta aplicação de estudo.
+
+- `200`: retorna o contrato de resposta de pedido com status `Dispatched` e `dispatchedAt` em UTC.
+- `404`: `order.not_found`.
+- `409`: `order.cannot_dispatch` para pedido não confirmado; `order.inventory_inconsistent` para reserva ausente ou insuficiente.
+
+Expede integralmente todos os itens do pedido. Na mesma transação, reduz `Quantity` e `ReservedQuantity`, preserva `AvailableQuantity` e registra a data de expedição. A coluna nullable `dispatched_at` foi adicionada por migration; não há entidade de envio, transportadora ou rastreio nesta etapa.
 
 ## Endpoints Planejados
 

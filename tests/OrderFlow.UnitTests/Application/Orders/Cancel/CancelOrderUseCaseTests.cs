@@ -101,6 +101,24 @@ public sealed class CancelOrderUseCaseTests
     }
 
     [Fact]
+    public async Task Should_Return_Conflict_When_Order_Is_Dispatched()
+    {
+        var (order, inventory) = CreateOrderWithReservedInventory();
+        order.ConfirmPayment();
+        order.Dispatch();
+        inventory.Dispatch(2);
+        var fixture = new CancelOrderUseCaseFixture(order, [inventory]);
+        var useCase = fixture.CreateSut();
+
+        var result = await useCase.ExecuteAsync(order.Id, CancellationToken.None);
+
+        AssertFailure(result, "order.cannot_cancel", AppErrorType.Conflict);
+        Assert.Equal(OrderStatus.Dispatched, order.Status);
+        Assert.Equal(0, inventory.ReservedQuantity);
+        Assert.Equal(3, inventory.Quantity);
+    }
+
+    [Fact]
     public async Task Should_Return_Conflict_And_Not_Cancel_Order_When_Inventory_Does_Not_Exist()
     {
         var (order, _) = CreateOrderWithReservedInventory();

@@ -137,4 +137,35 @@ public sealed class InventoryItemTests
         Assert.Equal(originalReservedQuantity, inventoryItem.ReservedQuantity);
         Assert.Equal(originalUpdatedAt, inventoryItem.UpdatedAt);
     }
+
+    [Fact]
+    public void Should_Dispatch_Reserved_Quantity_And_Preserve_Available_Quantity()
+    {
+        var inventoryItem = new InventoryItemBuilder().WithQuantity(10).Build();
+        inventoryItem.Reserve(4);
+        var beforeDispatch = DateTime.UtcNow;
+
+        inventoryItem.Dispatch(3);
+
+        var afterDispatch = DateTime.UtcNow;
+        Assert.Equal(7, inventoryItem.Quantity);
+        Assert.Equal(1, inventoryItem.ReservedQuantity);
+        Assert.Equal(6, inventoryItem.AvailableQuantity);
+        Assert.InRange(inventoryItem.UpdatedAt, beforeDispatch, afterDispatch);
+    }
+
+    [Fact]
+    public void Should_Not_Dispatch_More_Than_Reserved_Quantity()
+    {
+        var inventoryItem = new InventoryItemBuilder().WithQuantity(10).Build();
+        inventoryItem.Reserve(2);
+        var originalQuantity = inventoryItem.Quantity;
+        var originalReservedQuantity = inventoryItem.ReservedQuantity;
+
+        var exception = Assert.Throws<InvalidOperationException>(() => inventoryItem.Dispatch(3));
+
+        Assert.Equal("Not enough reserved quantity to dispatch.", exception.Message);
+        Assert.Equal(originalQuantity, inventoryItem.Quantity);
+        Assert.Equal(originalReservedQuantity, inventoryItem.ReservedQuantity);
+    }
 }

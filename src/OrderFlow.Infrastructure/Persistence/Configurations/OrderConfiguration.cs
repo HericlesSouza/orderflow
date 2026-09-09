@@ -36,6 +36,9 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(order => order.CancelledAt)
             .HasColumnName("cancelled_at");
 
+        builder.Property(order => order.DispatchedAt)
+            .HasColumnName("dispatched_at");
+
         builder.HasMany(order => order.OrderItems)
             .WithOne()
             .HasForeignKey("order_id")

@@ -47,6 +47,7 @@ public sealed class RejectPaymentEndpointTests(OrderFlowIntegrationSuiteFixture 
     [InlineData(OrderStatus.Confirmed)]
     [InlineData(OrderStatus.Cancelled)]
     [InlineData(OrderStatus.PaymentRejected)]
+    [InlineData(OrderStatus.Dispatched)]
     public async Task Should_Return_Conflict_Without_Releasing_Inventory_Twice_When_Order_Is_Not_Pending(OrderStatus status)
     {
         var order = await CreatePendingOrderAsync();
@@ -62,8 +63,18 @@ public sealed class RejectPaymentEndpointTests(OrderFlowIntegrationSuiteFixture 
         }
         else
         {
-            using var firstRejection = await RejectAsync(order.Id);
-            firstRejection.EnsureSuccessStatusCode();
+            if (status == OrderStatus.PaymentRejected)
+            {
+                using var firstRejection = await RejectAsync(order.Id);
+                firstRejection.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                using var approval = await ApproveAsync(order.Id);
+                approval.EnsureSuccessStatusCode();
+                using var dispatch = await DispatchAsync(order.Id);
+                dispatch.EnsureSuccessStatusCode();
+            }
         }
 
         using var response = await RejectAsync(order.Id);
@@ -148,6 +159,9 @@ public sealed class RejectPaymentEndpointTests(OrderFlowIntegrationSuiteFixture 
     private Task<HttpResponseMessage> CancelAsync(Guid orderId) =>
         Client.PostAsync($"/orders/{orderId}/cancel", null, CancellationToken);
 
+    private Task<HttpResponseMessage> DispatchAsync(Guid orderId) =>
+        Client.PostAsync($"/orders/{orderId}/dispatch", null, CancellationToken);
+
     private async Task AssertErrorAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
         Assert.Equal(status, response.StatusCode);
@@ -162,10 +176,11 @@ public sealed class RejectPaymentEndpointTests(OrderFlowIntegrationSuiteFixture 
         var db = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
         var order = await db.Orders.SingleAsync(value => value.Id == orderId, CancellationToken);
         var inventory = await db.InventoryItems.SingleAsync(CancellationToken);
+        var expectedQuantity = status == OrderStatus.Dispatched ? 3 : 5;
         Assert.Equal(status, order.Status);
         Assert.Equal(status == OrderStatus.Cancelled, order.CancelledAt.HasValue);
-        Assert.Equal(5, inventory.Quantity);
+        Assert.Equal(expectedQuantity, inventory.Quantity);
         Assert.Equal(reserved, inventory.ReservedQuantity);
-        Assert.Equal(5 - reserved, inventory.AvailableQuantity);
+        Assert.Equal(expectedQuantity - reserved, inventory.AvailableQuantity);
     }
 }
