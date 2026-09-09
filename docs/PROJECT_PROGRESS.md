@@ -154,7 +154,8 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Definir futuramente o fluxo de expedicao para consumir reservas e dar baixa fisica
+- Iniciar a Fase 8 definindo os eventos publicados por pagamento e expedicao
+- Planejar o outbox transacional antes de integrar RabbitMQ e MassTransit
 
 ## Historico de Atualizacoes
 

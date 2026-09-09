@@ -215,4 +215,4 @@ docker compose down
 
 ## Notas de aprendizado
 
-O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. A aprovação simulada inicia a Fase 7; rejeição, mensageria, outbox, idempotência e observabilidade permanecem como próximos incrementos.
+O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; mensageria, outbox, idempotência e observabilidade são os próximos incrementos.

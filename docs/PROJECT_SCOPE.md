@@ -393,6 +393,8 @@ OrderFlow.IntegrationTests
 - Atualizar status do pedido
 - Liberar estoque em caso de rejeição
 - Testar fluxo de pagamento
+- Expedir pedido confirmado com baixa física e encerramento da reserva
+- Registrar data de expedição
 
 ### Fase 8 - Mensageria
 
