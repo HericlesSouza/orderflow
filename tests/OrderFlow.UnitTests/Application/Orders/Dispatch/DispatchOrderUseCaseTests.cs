@@ -1,7 +1,9 @@
 using Moq;
 using OrderFlow.Application.Common.Errors;
+using OrderFlow.Application.Common.Messaging;
 using OrderFlow.Application.Orders.Dispatch;
 using OrderFlow.Application.Repositories;
+using OrderFlow.Contracts.Events.Orders;
 using OrderFlow.Domain.Entities;
 using OrderFlow.Domain.Enums;
 using OrderFlow.UnitTests.Common.Builders;
@@ -25,8 +27,14 @@ public sealed class DispatchOrderUseCaseTests
         var firstInventory = CreateReservedInventory(firstProductId, 5, 2);
         var secondInventory = CreateReservedInventory(secondProductId, 10, 3);
         var unitOfWork = new ImmediateUnitOfWork();
+        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
+        var expectedItems = new[]
+        {
+            new OrderDispatchedItem(firstProductId, 2),
+            new OrderDispatchedItem(secondProductId, 3)
+        }.OrderBy(item => item.ProductId).ToArray();
 
-        var result = await CreateUseCase(order, [firstInventory, secondInventory], unitOfWork)
+        var result = await CreateUseCase(order, [firstInventory, secondInventory], unitOfWork, outboxMessageWriter)
             .ExecuteAsync(order.Id, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -38,16 +46,24 @@ public sealed class DispatchOrderUseCaseTests
         Assert.Equal(7, secondInventory.Quantity);
         Assert.Equal(0, secondInventory.ReservedQuantity);
         Assert.Equal(1, unitOfWork.ExecutionCount);
+        outboxMessageWriter.Verify(writer => writer.Add(It.Is<OrderDispatched>(message =>
+            message.OrderId == order.Id &&
+            message.DispatchedAtUtc == order.DispatchedAt!.Value &&
+            message.Items.SequenceEqual(expectedItems))), Times.Once);
     }
 
     [Fact]
     public async Task Should_Return_NotFound_When_Order_Does_Not_Exist()
     {
-        var result = await CreateUseCase(null, []).ExecuteAsync(Guid.NewGuid(), CancellationToken.None);
+        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
+
+        var result = await CreateUseCase(null, [], outboxMessageWriter: outboxMessageWriter)
+            .ExecuteAsync(Guid.NewGuid(), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal(AppErrorType.NotFound, result.Error!.Type);
         Assert.Equal("order.not_found", result.Error.Code);
+        outboxMessageWriter.Verify(writer => writer.Add(It.IsAny<OrderDispatched>()), Times.Never);
     }
 
     [Theory]
@@ -66,14 +82,17 @@ public sealed class DispatchOrderUseCaseTests
             case OrderStatus.PaymentRejected: order.RejectPayment(); inventory.Release(2); break;
             case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); inventory.Dispatch(2); break;
         }
+        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
 
-        var result = await CreateUseCase(order, [inventory]).ExecuteAsync(order.Id, CancellationToken.None);
+        var result = await CreateUseCase(order, [inventory], outboxMessageWriter: outboxMessageWriter)
+            .ExecuteAsync(order.Id, CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal(AppErrorType.Conflict, result.Error!.Type);
         Assert.Equal("order.cannot_dispatch", result.Error.Code);
         Assert.Equal(status, order.Status);
         Assert.Equal(status == OrderStatus.PendingPayment ? 2 : 0, inventory.ReservedQuantity);
+        outboxMessageWriter.Verify(writer => writer.Add(It.IsAny<OrderDispatched>()), Times.Never);
     }
 
     [Fact]
@@ -83,20 +102,24 @@ public sealed class DispatchOrderUseCaseTests
         var order = new OrderBuilder().WithItems(new OrderItemBuilder().ForProduct(productId).WithQuantity(2).Build()).Build();
         order.ConfirmPayment();
         var inventory = CreateReservedInventory(productId, 5, 1);
+        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
 
-        var result = await CreateUseCase(order, [inventory]).ExecuteAsync(order.Id, CancellationToken.None);
+        var result = await CreateUseCase(order, [inventory], outboxMessageWriter: outboxMessageWriter)
+            .ExecuteAsync(order.Id, CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal("order.inventory_inconsistent", result.Error!.Code);
         Assert.Equal(OrderStatus.Confirmed, order.Status);
         Assert.Equal(5, inventory.Quantity);
         Assert.Equal(1, inventory.ReservedQuantity);
+        outboxMessageWriter.Verify(writer => writer.Add(It.IsAny<OrderDispatched>()), Times.Never);
     }
 
     private static DispatchOrderUseCase CreateUseCase(
         Order? order,
         IReadOnlyList<InventoryItem> inventoryItems,
-        ImmediateUnitOfWork? unitOfWork = null)
+        ImmediateUnitOfWork? unitOfWork = null,
+        Mock<IOutboxMessageWriter>? outboxMessageWriter = null)
     {
         var orderRepository = new Mock<IOrderRepository>();
         orderRepository.Setup(value => value.GetByIdForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -105,7 +128,11 @@ public sealed class DispatchOrderUseCaseTests
         inventoryRepository.Setup(value => value.GetByProductIdsForUpdateAsync(
                 It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(inventoryItems);
-        return new DispatchOrderUseCase(orderRepository.Object, inventoryRepository.Object, unitOfWork ?? new ImmediateUnitOfWork());
+        return new DispatchOrderUseCase(
+            orderRepository.Object,
+            inventoryRepository.Object,
+            outboxMessageWriter?.Object ?? Mock.Of<IOutboxMessageWriter>(),
+            unitOfWork ?? new ImmediateUnitOfWork());
     }
 
     private static InventoryItem CreateReservedInventory(Guid productId, int quantity, int reservedQuantity) =>
