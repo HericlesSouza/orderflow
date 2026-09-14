@@ -29,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\OrderFlow.Contracts\OrderFlow.Contracts.csproj" />
     <ProjectReference Include="..\..\src\OrderFlow.Domain\OrderFlow.Domain.csproj" />
     <ProjectReference Include="..\..\src\OrderFlow.Infrastructure\OrderFlow.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\OrderFlow.Api\OrderFlow.Api.csproj" />

@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Api.InventoryItems.Increase;
 using OrderFlow.Api.Orders;
 using OrderFlow.Api.Orders.Create;
+using OrderFlow.Contracts.Events.Orders;
 using OrderFlow.Domain.Enums;
 using OrderFlow.Infrastructure.Persistence;
 using OrderFlow.IntegrationTests.Infrastructure;
@@ -36,6 +38,21 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
         Assert.Null(body.CancelledAt);
         Assert.Equal(order.Items.ToArray(), body.Items.ToArray());
         await AssertPersistedStateAsync(order.Id, productId, OrderStatus.Dispatched, 3, 0);
+        var outboxMessage = Assert.Single(await GetOutboxMessagesAsync());
+        Assert.NotEqual(Guid.Empty, outboxMessage.Id);
+        Assert.Equal("order.dispatched.v1", outboxMessage.EventType);
+        Assert.Equal(DateTimeKind.Utc, outboxMessage.CreatedAt.Kind);
+        Assert.Null(outboxMessage.ProcessedAt);
+        Assert.Equal(0, outboxMessage.AttemptCount);
+        Assert.Null(outboxMessage.LastAttemptedAt);
+        Assert.Null(outboxMessage.LastError);
+        var dispatchedEvent = JsonSerializer.Deserialize<OrderDispatched>(outboxMessage.Payload, JsonSerializerOptions.Web);
+        Assert.NotNull(dispatchedEvent);
+        Assert.Equal(order.Id, dispatchedEvent.OrderId);
+        Assert.Equal(body.DispatchedAt!.Value, dispatchedEvent.DispatchedAtUtc);
+        var dispatchedItem = Assert.Single(dispatchedEvent.Items);
+        Assert.Equal(productId, dispatchedItem.ProductId);
+        Assert.Equal(2, dispatchedItem.Quantity);
 
         using var lookup = await Client.GetAsync($"/orders/{order.Id}", CancellationToken);
         var persisted = await lookup.Content.ReadFromJsonAsync<OrderResponse>(CancellationToken);
@@ -49,6 +66,7 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
         using var response = await DispatchAsync(Guid.NewGuid());
 
         await AssertErrorAsync(response, HttpStatusCode.NotFound, "order.not_found");
+        await AssertOutboxMessageCountAsync(0);
     }
 
     [Theory]
@@ -87,6 +105,7 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
             status,
             status == OrderStatus.Dispatched ? 3 : 5,
             status == OrderStatus.PendingPayment ? 2 : 0);
+        await AssertOutboxMessageCountAsync(status == OrderStatus.Dispatched ? 1 : 0);
     }
 
     [Fact]
@@ -108,6 +127,7 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
 
         await AssertErrorAsync(response, HttpStatusCode.Conflict, "order.inventory_inconsistent");
         await AssertPersistedStateAsync(order.Id, productId, OrderStatus.Confirmed, 5, 1);
+        await AssertOutboxMessageCountAsync(0);
     }
 
     [Fact]
@@ -134,6 +154,7 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
             var conflict = Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
             await AssertErrorAsync(conflict, HttpStatusCode.Conflict, "order.cannot_dispatch");
             await AssertPersistedStateAsync(order.Id, productId, OrderStatus.Dispatched, 3, 0);
+            await AssertOutboxMessageCountAsync(1);
         }
         finally
         {
@@ -156,6 +177,7 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
         {
             Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
             await AssertPersistedStateAsync(order.Id, productId, OrderStatus.Dispatched, 8, 0);
+            await AssertOutboxMessageCountAsync(1);
         }
         finally
         {
@@ -218,4 +240,59 @@ public sealed class DispatchOrderEndpointTests(OrderFlowIntegrationSuiteFixture 
         Assert.Equal(reservedQuantity, inventory.ReservedQuantity);
         Assert.Equal(quantity - reservedQuantity, inventory.AvailableQuantity);
     }
+
+    private async Task AssertOutboxMessageCountAsync(int expectedCount)
+    {
+        var messages = await GetOutboxMessagesAsync();
+
+        Assert.Equal(expectedCount, messages.Count);
+    }
+
+    private async Task<IReadOnlyList<OutboxMessageRow>> GetOutboxMessagesAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
+        await db.Database.OpenConnectionAsync(CancellationToken);
+
+        try
+        {
+            using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = """
+                SELECT id, event_type, payload::text, created_at, processed_at, attempt_count, last_attempted_at, last_error
+                FROM outbox_messages
+                ORDER BY created_at
+                """;
+            await using var reader = await command.ExecuteReaderAsync(CancellationToken);
+            var messages = new List<OutboxMessageRow>();
+
+            while (await reader.ReadAsync(CancellationToken))
+            {
+                messages.Add(new OutboxMessageRow(
+                    reader.GetGuid(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetDateTime(3),
+                    reader.IsDBNull(4) ? null : reader.GetDateTime(4),
+                    reader.GetInt32(5),
+                    reader.IsDBNull(6) ? null : reader.GetDateTime(6),
+                    reader.IsDBNull(7) ? null : reader.GetString(7)));
+            }
+
+            return messages;
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
+
+    private sealed record OutboxMessageRow(
+        Guid Id,
+        string EventType,
+        string Payload,
+        DateTime CreatedAt,
+        DateTime? ProcessedAt,
+        int AttemptCount,
+        DateTime? LastAttemptedAt,
+        string? LastError);
 }

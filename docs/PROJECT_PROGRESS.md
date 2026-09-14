@@ -2,31 +2,33 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-09-07
-- Fase atual: Expedicao integral de pedidos
-- Foco atual: expedicao implementada; ciclo principal de pedido concluido
-- Proximo marco concreto: definir eventos assincronos para pagamentos e expedicao
+- Ultima atualizacao: 2026-09-14
+- Fase atual: Outbox transacional para expedicao
+- Foco atual: registrar `OrderDispatched` junto da expedicao no mesmo commit de pedido e estoque
+- Proximo marco concreto: criar o worker que le mensagens pendentes da Outbox para futura publicacao
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
   - API implementada hoje: `GET /health`, endpoints de Products e Inventory ja documentados, mais `POST /orders`, `GET /orders/{id}`, `POST /orders/{id}/cancel`, `POST /orders/{id}/dispatch`, `POST /payments/{orderId}/approve` e `POST /payments/{orderId}/reject`
-  - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta, cancelamento e expedicao de pedidos, e pagamentos simulados com bloqueio transacional do pedido e estoque
-  - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders e OrderItems, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
+  - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta, cancelamento e expedicao de pedidos, pagamentos simulados e registro do evento `OrderDispatched` na Outbox
+  - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders, OrderItems e mensagens de Outbox, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
+  - Contracts implementado hoje: contrato publico `OrderDispatched` com pedido, instante UTC de expedicao e itens enviados
   - A solucao possui tratamento centralizado de erros com `AppError`, `Result<T>` tipado, traducao HTTP por tipo e codigo estavel em `ProblemDetails`
   - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; cancelamento, rejeicao e expedicao atualizam pedido e reservas na mesma transacao
+  - Uma expedicao valida tambem grava uma mensagem pendente de Outbox na mesma transacao; erros e tentativas concorrentes nao deixam mensagens extras
   - Aumento, reserva e liberacao de estoque usam transacoes e bloqueios de linha para preservar atualizacoes concorrentes
   - O preparo de um ambiente novo usa `dotnet-ef` local e aplicacao explicita das migrations
 
 ## Snapshot de Validacao
 
-- SDK .NET validado: `10.0.400`
+- SDK .NET validado: `10.0.401`
 - Entity Framework CLI local: `10.0.9`
 - Build: `dotnet build OrderFlow.slnx` executado com sucesso
-- Testes totais: 196 aprovados
-- Testes de integracao: fluxos de Products, Inventory, Orders e Payments, incluindo rollback, preco historico e concorrencia, usando PostgreSQL real via um Testcontainer, bancos isolados por feature, migrations e reset por Respawn
+- Testes totais: 197 aprovados
+- Testes de integracao: fluxos de Products, Inventory, Orders e Payments, incluindo rollback, preco historico, concorrencia e persistencia da Outbox, usando PostgreSQL real via um Testcontainer, bancos isolados por feature, migrations e reset por Respawn
 - Observacoes de ambiente:
-  - `dotnet build OrderFlow.slnx --no-restore` e `dotnet test OrderFlow.slnx --no-build --no-restore` executados em 2026-09-07
-  - build e execucao da suite passaram no ambiente atual
+  - projetos e suites validados em 2026-09-14 com build serial (`-m:1 -nodeReuse:false`) para evitar bloqueios locais do MSBuild
+  - restore emitiu `NU1900` porque a consulta de vulnerabilidades ao NuGet estava indisponivel; pacotes restaurados e builds concluidos
   - os testes de integracao dependem de Docker acessivel no ambiente
 
 ## Progresso por Fase
@@ -123,7 +125,7 @@ Status: `Concluido`
 
 ### Fase 7 - Pagamentos
 
-Status: `Em andamento`
+Status: `Concluido`
 
 - [x] Simular pagamento aprovado
 - [x] Simular pagamento rejeitado
@@ -134,8 +136,12 @@ Status: `Em andamento`
 
 ### Fase 8 - Mensageria
 
-Status: `Pendente`
+Status: `Em andamento`
 
+- [x] Criar `OrderFlow.Contracts` e o contrato `OrderDispatched`
+- [x] Registrar `OrderDispatched` em uma Outbox transacional durante a expedicao
+- [x] Criar migration para `outbox_messages` com payload `jsonb` e indice parcial de pendentes
+- [x] Testar persistencia, falhas e concorrencia da Outbox com PostgreSQL real
 - [ ] Adicionar RabbitMQ
 - [ ] Adicionar MassTransit
 - [ ] Publicar eventos de pedido
@@ -149,16 +155,17 @@ Status: `Pendente`
 - [ ] Adicionar logs estruturados
 - [ ] Adicionar health checks completos
 - [ ] Adicionar idempotencia
-- [ ] Adicionar outbox pattern
+- [x] Adicionar outbox pattern transacional (antecipado na Fase 8)
 - [ ] Adicionar observabilidade com .NET Aspire
 
 ## Proximos Passos
 
-- Iniciar a Fase 8 definindo os eventos publicados por pagamento e expedicao
-- Planejar o outbox transacional antes de integrar RabbitMQ e MassTransit
+- Criar um worker que busca mensagens pendentes em `outbox_messages`
+- Definir como o worker registra tentativa, sucesso e falha antes de integrar RabbitMQ e MassTransit
 
 ## Historico de Atualizacoes
 
+- 2026-09-14 - Iniciada a Fase 8: criado `OrderFlow.Contracts`, o evento `OrderDispatched` e a Outbox transacional. A migration cria `outbox_messages` com payload `jsonb` e indice parcial para pendencias; 197 testes aprovados, incluindo sucesso, erro e concorrencia da expedicao.
 - 2026-09-07 - Expedicao integral implementada: `POST /orders/{id}/dispatch` baixa estoque fisico e reserva para pedidos confirmados, registra `DispatchedAt` e usa migration; 196 testes aprovados. Colecao Postman ampliada para 99 requisicoes e 15 endpoints.
 - 2026-09-07 - Rejeicao simulada implementada com liberacao atomica de reservas, bloqueios transacionais e cobertura de concorrencia com aprovacao e cancelamento; 164 testes aprovados. Colecao Postman ampliada para 87 requisicoes e 14 endpoints.
 - 2026-09-07 - Aprovacao simulada implementada com reservas preservadas e bloqueio de pedido; 147 testes aprovados, incluindo disputa entre aprovacao e cancelamento. Colecao Postman ampliada para 77 requisicoes e 13 endpoints.

@@ -21,8 +21,9 @@ Resumo atual:
 - Estoque: criação, consulta e aumento, com proteção contra aumentos e reservas concorrentes
 - Pedidos: criação, consulta por ID, cancelamento e expedição, com reserva/liberação/baixa atômica de estoque
 - Pagamentos: aprovação e rejeição simuladas, com confirmação transacional e manutenção ou liberação das reservas
+- Outbox transacional: expedição grava o evento pendente `OrderDispatched` no mesmo commit do pedido e estoque
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Suíte validada com 196 testes, incluindo integração com PostgreSQL real
+- Suíte validada com 197 testes, incluindo integração com PostgreSQL real
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
 
@@ -91,7 +92,7 @@ Planejado para fases posteriores:
 ### Funcionalidades planejadas
 
 - Publicar e processar eventos de forma assíncrona
-- Adicionar retries, outbox, idempotência e observabilidade
+- Adicionar retries, idempotência e observabilidade
 
 ## Roadmap resumido
 
@@ -103,7 +104,7 @@ Planejado para fases posteriores:
 - Fase 6 - Testes de integração: concluída
 - Fase 7 - Pagamentos: concluída (aprovação e rejeição implementadas)
 - Expedição integral: concluída
-- Fase 8 - Mensageria: pendente
+- Fase 8 - Mensageria: em andamento (contrato e Outbox transacional concluídos)
 - Fase 9 - Produção: pendente
 
 Para o roadmap detalhado, consulte `docs/PROJECT_SCOPE.md` e `docs/PROJECT_PROGRESS.md`.
@@ -215,4 +216,4 @@ docker compose down
 
 ## Notas de aprendizado
 
-O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; mensageria, outbox, idempotência e observabilidade são os próximos incrementos.
+O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; a Outbox transacional iniciou a fase de mensageria. O próximo incremento é um worker para publicar mensagens pendentes, antes de RabbitMQ, MassTransit, idempotência e observabilidade.

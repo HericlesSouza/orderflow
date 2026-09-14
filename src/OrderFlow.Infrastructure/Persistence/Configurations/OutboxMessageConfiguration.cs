@@ -47,7 +47,8 @@ internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outb
             .HasColumnName("last_error")
             .HasMaxLength(2000);
 
-        builder.HasIndex(message => new { message.ProcessedAt, message.CreatedAt })
-            .HasDatabaseName("ix_outbox_messages_processed_at_created_at");
+        builder.HasIndex(message => message.CreatedAt)
+            .HasFilter("processed_at IS NULL")
+            .HasDatabaseName("ix_outbox_messages_pending");
     }
 }

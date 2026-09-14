@@ -13,16 +13,23 @@ public sealed class LayerDependencyTests
             TestDisplayName = "Domain has no project dependencies"
         };
 
-        yield return new TheoryDataRow<string, string[]>("OrderFlow.Application", ["OrderFlow.Domain"])
+        yield return new TheoryDataRow<string, string[]>("OrderFlow.Contracts", [])
         {
-            TestDisplayName = "Application depends only on Domain"
+            TestDisplayName = "Contracts has no project dependencies"
+        };
+
+        yield return new TheoryDataRow<string, string[]>(
+            "OrderFlow.Application",
+            ["OrderFlow.Contracts", "OrderFlow.Domain"])
+        {
+            TestDisplayName = "Application depends on Contracts and Domain"
         };
 
         yield return new TheoryDataRow<string, string[]>(
             "OrderFlow.Infrastructure",
-            ["OrderFlow.Application", "OrderFlow.Domain"])
+            ["OrderFlow.Application", "OrderFlow.Contracts", "OrderFlow.Domain"])
         {
-            TestDisplayName = "Infrastructure depends on Application and Domain"
+            TestDisplayName = "Infrastructure depends on Application, Contracts and Domain"
         };
 
         yield return new TheoryDataRow<string, string[]>(
