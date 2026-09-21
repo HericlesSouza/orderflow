@@ -296,18 +296,7 @@ GET /reports/sales
 GET /reports/products/top-selling
 ```
 
-## Estrutura Inicial da Solução
-
-```txt
-OrderFlow.Api
-OrderFlow.Application
-OrderFlow.Domain
-OrderFlow.Infrastructure
-OrderFlow.UnitTests
-OrderFlow.IntegrationTests
-```
-
-## Estrutura Planejada
+## Estrutura Atual da Solução
 
 ```txt
 OrderFlow.Api
@@ -320,6 +309,8 @@ OrderFlow.UnitTests
 OrderFlow.IntegrationTests
 ```
 
+`OrderFlow.Worker` já foi criado e incluído na solução. Sua primeira versão consulta a Outbox em lotes, publica por uma abstração baseada em logs e registra tentativas, sucesso e falha; RabbitMQ e MassTransit continuam pendentes. O processamento atual pressupõe uma única instância do Worker.
+
 ## Responsabilidade das Camadas
 
 | Projeto | Responsabilidade |
@@ -329,7 +320,7 @@ OrderFlow.IntegrationTests
 | OrderFlow.Domain | Entidades, regras de domínio, enums e comportamentos principais |
 | OrderFlow.Infrastructure | EF Core, PostgreSQL, repositórios, integrações externas |
 | OrderFlow.Contracts | Contratos de eventos e mensagens |
-| OrderFlow.Worker | Processamento assíncrono e consumers |
+| OrderFlow.Worker | Processamento assíncrono da Outbox; publicação inicial por logs, com RabbitMQ e consumers ainda pendentes |
 | OrderFlow.UnitTests | Testes de domínio, aplicação, API isolada e arquitetura |
 | OrderFlow.IntegrationTests | Testes HTTP, persistência, transações e concorrência com PostgreSQL real |
 
@@ -398,18 +389,27 @@ OrderFlow.IntegrationTests
 
 ### Fase 8 - Mensageria
 
-- Adicionar RabbitMQ
-- Adicionar MassTransit
-- Publicar eventos de pedido
-- Criar worker para processar eventos
-- Adicionar retries básicos
+- [x] Criar `OrderFlow.Contracts` e o contrato `OrderDispatched`
+- [x] Registrar `OrderDispatched` na Outbox no mesmo commit da expedição
+- [x] Criar a tabela `outbox_messages` e testar sua persistência transacional
+- [x] Criar o esqueleto de `OrderFlow.Worker` e incluí-lo na solução
+- [x] Integrar o Worker ao banco para buscar mensagens pendentes da Outbox
+- [x] Registrar tentativas, sucesso e falha do processamento
+- [x] Publicar eventos por uma abstração simples antes da adoção de um broker
+- [ ] Testar o processador e o repositório da Outbox
+- [ ] Adicionar RabbitMQ
+- [ ] Evoluir a publicação e os consumers para MassTransit
+- [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens inválidas
 
 ### Fase 9 - Produção
 
 - Adicionar logs estruturados
 - Adicionar health checks completos
 - Adicionar idempotência
-- Adicionar outbox pattern
+- Operacionalizar o processamento da Outbox para produção
+- Suportar múltiplas instâncias do Worker com claim/lease e `FOR UPDATE SKIP LOCKED`
+- Testar duas instâncias disputando o mesmo lote de mensagens
+- Manter consumers idempotentes, pois claim/lease reduz publicação simultânea, mas não elimina republicação após falhas
 - Adicionar observabilidade com .NET Aspire
 
 ## Fluxo de Trabalho por Feature

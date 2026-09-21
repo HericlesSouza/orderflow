@@ -119,7 +119,7 @@ dotnet restore OrderFlow.slnx
 docker compose up -d
 dotnet tool run dotnet-ef database update --project src/OrderFlow.Infrastructure --startup-project src/OrderFlow.Api
 dotnet build OrderFlow.slnx
-dotnet test OrderFlow.slnx
+dotnet test --solution OrderFlow.slnx
 dotnet format OrderFlow.slnx --verify-no-changes --no-restore
 docker compose down
 ```

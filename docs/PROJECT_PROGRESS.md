@@ -2,10 +2,10 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-09-14
-- Fase atual: Outbox transacional para expedicao
-- Foco atual: registrar `OrderDispatched` junto da expedicao no mesmo commit de pedido e estoque
-- Proximo marco concreto: criar o worker que le mensagens pendentes da Outbox para futura publicacao
+- Ultima atualizacao: 2026-09-21
+- Fase atual: Fase 8 - Mensageria, com o primeiro processador da Outbox implementado
+- Foco atual: validar e endurecer o processamento em background antes de adicionar RabbitMQ
+- Proximo marco concreto: criar testes especificos para sucesso e falha do `OutboxProcessor` e para as atualizacoes do repositorio
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
@@ -13,6 +13,8 @@
   - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta, cancelamento e expedicao de pedidos, pagamentos simulados e registro do evento `OrderDispatched` na Outbox
   - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders, OrderItems e mensagens de Outbox, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
   - Contracts implementado hoje: contrato publico `OrderDispatched` com pedido, instante UTC de expedicao e itens enviados
+  - Worker implementado hoje: `OrderFlow.Worker` consulta ate 20 mensagens pendentes por ciclo, publica por uma abstracao baseada em logs e registra tentativa, sucesso e falha
+  - Limitacao conhecida: o processamento atual pressupoe uma unica instancia do Worker e ainda nao possui claim/lease, backoff, limite de tentativas ou dead-letter
   - A solucao possui tratamento centralizado de erros com `AppError`, `Result<T>` tipado, traducao HTTP por tipo e codigo estavel em `ProblemDetails`
   - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; cancelamento, rejeicao e expedicao atualizam pedido e reservas na mesma transacao
   - Uma expedicao valida tambem grava uma mensagem pendente de Outbox na mesma transacao; erros e tentativas concorrentes nao deixam mensagens extras
@@ -21,15 +23,21 @@
 
 ## Snapshot de Validacao
 
-- SDK .NET validado: `10.0.401`
+Ultima validacao completa, realizada em 2026-09-14:
+
+- SDK .NET: `10.0.401`
 - Entity Framework CLI local: `10.0.9`
-- Build: `dotnet build OrderFlow.slnx` executado com sucesso
+- Build executado com sucesso
 - Testes totais: 197 aprovados
 - Testes de integracao: fluxos de Products, Inventory, Orders e Payments, incluindo rollback, preco historico, concorrencia e persistencia da Outbox, usando PostgreSQL real via um Testcontainer, bancos isolados por feature, migrations e reset por Respawn
-- Observacoes de ambiente:
-  - projetos e suites validados em 2026-09-14 com build serial (`-m:1 -nodeReuse:false`) para evitar bloqueios locais do MSBuild
-  - restore emitiu `NU1900` porque a consulta de vulnerabilidades ao NuGet estava indisponivel; pacotes restaurados e builds concluidos
-  - os testes de integracao dependem de Docker acessivel no ambiente
+
+Validacao atual, realizada em 2026-09-21:
+
+- `dotnet build OrderFlow.slnx --no-restore -m:1 -nodeReuse:false`: concluido com sucesso, incluindo `OrderFlow.Worker`
+- Testes unitarios: 121 aprovados pelo runner xUnit
+- Testes de integracao: 76 aprovados com PostgreSQL via Testcontainers
+- Testes totais: 197 aprovados
+- Formatacao: verificada com `dotnet format OrderFlow.slnx --verify-no-changes --no-restore`
 
 ## Progresso por Fase
 
@@ -142,11 +150,14 @@ Status: `Em andamento`
 - [x] Registrar `OrderDispatched` em uma Outbox transacional durante a expedicao
 - [x] Criar migration para `outbox_messages` com payload `jsonb` e indice parcial de pendentes
 - [x] Testar persistencia, falhas e concorrencia da Outbox com PostgreSQL real
+- [x] Criar o esqueleto de `OrderFlow.Worker` e inclui-lo na solucao
+- [x] Integrar o Worker ao banco para buscar mensagens pendentes da Outbox
+- [x] Registrar tentativa, sucesso e falha do processamento
+- [x] Publicar eventos por uma abstracao simples antes da adocao de um broker
+- [ ] Testar `OutboxProcessor` e `OutboxMessageRepository`
 - [ ] Adicionar RabbitMQ
-- [ ] Adicionar MassTransit
-- [ ] Publicar eventos de pedido
-- [ ] Criar worker para processar eventos
-- [ ] Adicionar retries basicos
+- [ ] Evoluir a publicacao e os consumers para MassTransit
+- [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens invalidas
 
 ### Fase 9 - Producao
 
@@ -156,15 +167,21 @@ Status: `Pendente`
 - [ ] Adicionar health checks completos
 - [ ] Adicionar idempotencia
 - [x] Adicionar outbox pattern transacional (antecipado na Fase 8)
+- [ ] Suportar multiplas instancias do Worker com claim/lease e `FOR UPDATE SKIP LOCKED`
+- [ ] Testar duas instancias disputando o mesmo lote de mensagens
+- [ ] Garantir consumers idempotentes para tolerar republicacao apos falhas
 - [ ] Adicionar observabilidade com .NET Aspire
 
 ## Proximos Passos
 
-- Criar um worker que busca mensagens pendentes em `outbox_messages`
-- Definir como o worker registra tentativa, sucesso e falha antes de integrar RabbitMQ e MassTransit
+- Criar testes unitarios para sucesso, falha, cancelamento e continuacao do lote no `OutboxProcessor`
+- Criar testes de integracao para leitura e atualizacao de `outbox_messages`
+- Tornar intervalo e tamanho do lote configuraveis antes de adicionar RabbitMQ
 
 ## Historico de Atualizacoes
 
+- 2026-09-21 - Implementada a primeira versao do processador da Outbox no `OrderFlow.Worker`: leitura em lotes, publicador baseado em logs e registro de tentativa, sucesso e falha. Build e suite completa validados com 197 testes aprovados; testes especificos ficaram como proximo passo, enquanto concorrencia multi-instancia, backoff, limite de tentativas e dead-letter foram registrados para evolucao futura.
+- 2026-09-19 - Criado o esqueleto de `OrderFlow.Worker` e adicionado a solucao. O projeto ainda nao acessa a Outbox nem publica mensagens. A solucao compilou com sucesso e 121 testes unitarios passaram; os testes integrados nao foram revalidados porque o Docker nao estava acessivel, mantendo 197 testes como ultimo snapshot completo.
 - 2026-09-14 - Iniciada a Fase 8: criado `OrderFlow.Contracts`, o evento `OrderDispatched` e a Outbox transacional. A migration cria `outbox_messages` com payload `jsonb` e indice parcial para pendencias; 197 testes aprovados, incluindo sucesso, erro e concorrencia da expedicao.
 - 2026-09-07 - Expedicao integral implementada: `POST /orders/{id}/dispatch` baixa estoque fisico e reserva para pedidos confirmados, registra `DispatchedAt` e usa migration; 196 testes aprovados. Colecao Postman ampliada para 99 requisicoes e 15 endpoints.
 - 2026-09-07 - Rejeicao simulada implementada com liberacao atomica de reservas, bloqueios transacionais e cobertura de concorrencia com aprovacao e cancelamento; 164 testes aprovados. Colecao Postman ampliada para 87 requisicoes e 14 endpoints.

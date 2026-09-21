@@ -1,6 +1,6 @@
 using Moq;
 using OrderFlow.Application.Common.Errors;
-using OrderFlow.Application.Common.Messaging;
+using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Application.Orders.Dispatch;
 using OrderFlow.Application.Repositories;
 using OrderFlow.Contracts.Events.Orders;

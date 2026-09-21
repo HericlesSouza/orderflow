@@ -10,6 +10,7 @@
     <Project Path="src/OrderFlow.Contracts/OrderFlow.Contracts.csproj" />
     <Project Path="src/OrderFlow.Domain/OrderFlow.Domain.csproj" />
     <Project Path="src/OrderFlow.Infrastructure/OrderFlow.Infrastructure.csproj" />
+    <Project Path="src/OrderFlow.Worker/OrderFlow.Worker.csproj" Id="4d5c50e7-13d2-418e-b312-f9f8d028d753" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj" />

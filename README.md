@@ -23,7 +23,8 @@ Resumo atual:
 - Pagamentos: aprovação e rejeição simuladas, com confirmação transacional e manutenção ou liberação das reservas
 - Outbox transacional: expedição grava o evento pendente `OrderDispatched` no mesmo commit do pedido e estoque
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Suíte validada com 197 testes, incluindo integração com PostgreSQL real
+- Último snapshot completo validado com 197 testes, incluindo integração com PostgreSQL real
+- `OrderFlow.Worker` processa lotes pendentes da Outbox, registra tentativas e usa `LoggingEventPublisher` como destino provisório
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
 
@@ -104,7 +105,7 @@ Planejado para fases posteriores:
 - Fase 6 - Testes de integração: concluída
 - Fase 7 - Pagamentos: concluída (aprovação e rejeição implementadas)
 - Expedição integral: concluída
-- Fase 8 - Mensageria: em andamento (contrato e Outbox transacional concluídos)
+- Fase 8 - Mensageria: em andamento (Outbox transacional e primeiro processador em background concluídos)
 - Fase 9 - Produção: pendente
 
 Para o roadmap detalhado, consulte `docs/PROJECT_SCOPE.md` e `docs/PROJECT_PROGRESS.md`.
@@ -165,39 +166,39 @@ Health check:
 Mantenha o Docker ativo porque os testes de integração criam um PostgreSQL real com Testcontainers.
 
 ```bash
-dotnet test OrderFlow.slnx
+dotnet test --solution OrderFlow.slnx
 ```
 
 A suíte está separada por responsabilidade:
 
 ```bash
 # Não depende de Docker
-dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj
+dotnet test --project tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj
 
 # Depende do Docker para criar o PostgreSQL efêmero
-dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj
+dotnet test --project tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj
 ```
 
 Nos testes unitários, builders de domínio mantêm defaults válidos e dados incidentais determinísticos; fixtures locais concentram mocks apenas nos casos de uso com setup repetitivo. Nos testes integrados, uma fixture de assembly compartilha um único container PostgreSQL, cria um banco por feature, aplica migrations e usa Respawn antes de cada teste.
 
 As classes da mesma feature pertencem à mesma collection e executam em série; Products, Inventory e Orders usam bancos distintos e podem executar em paralelo. A preparação de cenários integrados é feita por builders persistentes específicos.
 
-Os projetos usam xUnit v3 com Microsoft Testing Platform. É possível filtrar por traits de categoria, camada e feature:
+Os projetos usam xUnit v3 com Microsoft Testing Platform, selecionado pelo `global.json`; no .NET 10, os comandos indicam explicitamente `--solution` ou `--project`. É possível filtrar por traits de categoria, camada e feature:
 
 ```bash
-dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Category=Unit]'
-dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Layer=Domain]'
-dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Feature=Products]'
-dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Category=Integration]'
-dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Layer=Api]'
-dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Feature=Orders]'
+dotnet test --project tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Category=Unit]'
+dotnet test --project tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Layer=Domain]'
+dotnet test --project tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj -- --filter-query '/[Feature=Products]'
+dotnet test --project tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Category=Integration]'
+dotnet test --project tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Layer=Api]'
+dotnet test --project tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj -- --filter-query '/[Feature=Orders]'
 ```
 
 Para gerar cobertura em formato Cobertura:
 
 ```bash
-dotnet test tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj --coverlet --coverlet-output-format cobertura --coverlet-file-prefix unit
-dotnet test tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj --coverlet --coverlet-output-format cobertura --coverlet-file-prefix integration
+dotnet test --project tests/OrderFlow.UnitTests/OrderFlow.UnitTests.csproj --coverlet --coverlet-output-format cobertura --coverlet-file-prefix unit
+dotnet test --project tests/OrderFlow.IntegrationTests/OrderFlow.IntegrationTests.csproj --coverlet --coverlet-output-format cobertura --coverlet-file-prefix integration
 ```
 
 O relatório é criado em `TestResults/`.
@@ -216,4 +217,4 @@ docker compose down
 
 ## Notas de aprendizado
 
-O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; a Outbox transacional iniciou a fase de mensageria. O próximo incremento é um worker para publicar mensagens pendentes, antes de RabbitMQ, MassTransit, idempotência e observabilidade.
+O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; a Outbox transacional iniciou a fase de mensageria. O `OrderFlow.Worker` já busca mensagens pendentes em lotes, publica por uma abstração inicial baseada em logs e registra tentativas, sucesso e falha. Nesta etapa, `LoggingEventPublisher` é um destino terminal provisório: mensagens marcadas como processadas após o log não serão reenviadas automaticamente quando RabbitMQ for adicionado. Os próximos incrementos são cobrir esse fluxo com testes específicos e então adicionar RabbitMQ e MassTransit; concorrência entre instâncias, retries robustos, idempotência e observabilidade permanecem mapeados para a evolução de produção.

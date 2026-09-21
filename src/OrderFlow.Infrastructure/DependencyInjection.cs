@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OrderFlow.Application.Common.Messaging;
+using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Application.Common.Transactions;
 using OrderFlow.Application.Repositories;
 using OrderFlow.Infrastructure.Persistence;
@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IInventoryItemRepository, InventoryItemRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IOutboxMessageWriter, OutboxMessageWriter>();
+        services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         return services;

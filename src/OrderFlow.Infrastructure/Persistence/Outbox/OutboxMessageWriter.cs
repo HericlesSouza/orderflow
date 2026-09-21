@@ -1,5 +1,5 @@
 using System.Text.Json;
-using OrderFlow.Application.Common.Messaging;
+using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Contracts.Events.Orders;
 
 namespace OrderFlow.Infrastructure.Persistence.Outbox;

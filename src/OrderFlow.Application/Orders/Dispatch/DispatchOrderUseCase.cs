@@ -1,5 +1,5 @@
 using OrderFlow.Application.Common.Errors;
-using OrderFlow.Application.Common.Messaging;
+using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Application.Common.Results;
 using OrderFlow.Application.Common.Transactions;
 using OrderFlow.Application.Repositories;
