@@ -4,8 +4,8 @@
 
 - Ultima atualizacao: 2026-09-21
 - Fase atual: Fase 8 - Mensageria, com o primeiro processador da Outbox implementado
-- Foco atual: validar e endurecer o processamento em background antes de adicionar RabbitMQ
-- Proximo marco concreto: criar testes especificos para sucesso e falha do `OutboxProcessor` e para as atualizacoes do repositorio
+- Foco atual: validar a persistencia do processamento em background antes de adicionar RabbitMQ
+- Proximo marco concreto: criar testes de integracao para leitura e atualizacao no `OutboxMessageRepository`
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
@@ -38,6 +38,7 @@ Validacao atual, realizada em 2026-09-21:
 - Testes de integracao: 76 aprovados com PostgreSQL via Testcontainers
 - Testes totais: 197 aprovados
 - Formatacao: verificada com `dotnet format OrderFlow.slnx --verify-no-changes --no-restore`
+- Incremento posterior: 7 testes unitarios do `OutboxProcessor` aprovados em execucao filtrada; a suite completa nao foi reexecutada neste incremento
 
 ## Progresso por Fase
 
@@ -154,10 +155,12 @@ Status: `Em andamento`
 - [x] Integrar o Worker ao banco para buscar mensagens pendentes da Outbox
 - [x] Registrar tentativa, sucesso e falha do processamento
 - [x] Publicar eventos por uma abstracao simples antes da adocao de um broker
-- [ ] Testar `OutboxProcessor` e `OutboxMessageRepository`
+- [x] Testar `OutboxProcessor`
+- [ ] Testar `OutboxMessageRepository` com PostgreSQL
+- [ ] Tornar intervalo de polling e tamanho do lote configuraveis
+- [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens invalidas
 - [ ] Adicionar RabbitMQ
 - [ ] Evoluir a publicacao e os consumers para MassTransit
-- [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens invalidas
 
 ### Fase 9 - Producao
 
@@ -174,13 +177,13 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Criar testes unitarios para sucesso, falha, cancelamento e continuacao do lote no `OutboxProcessor`
 - Criar testes de integracao para leitura e atualizacao de `outbox_messages`
 - Tornar intervalo e tamanho do lote configuraveis antes de adicionar RabbitMQ
+- Adicionar backoff, limite de tentativas e dead-letter antes de integrar RabbitMQ
 
 ## Historico de Atualizacoes
 
-- 2026-09-21 - Implementada a primeira versao do processador da Outbox no `OrderFlow.Worker`: leitura em lotes, publicador baseado em logs e registro de tentativa, sucesso e falha. Build e suite completa validados com 197 testes aprovados; testes especificos ficaram como proximo passo, enquanto concorrencia multi-instancia, backoff, limite de tentativas e dead-letter foram registrados para evolucao futura.
+- 2026-09-21 - Implementada a primeira versao do processador da Outbox no `OrderFlow.Worker`: leitura em lotes, publicador baseado em logs e registro de tentativa, sucesso e falha. Build e suite completa validados com 197 testes aprovados; posteriormente, 7 testes unitarios especificos do `OutboxProcessor` foram adicionados e aprovados em execucao filtrada. Testes do repositorio ficaram como proximo passo, enquanto concorrencia multi-instancia, backoff, limite de tentativas e dead-letter foram registrados para evolucao futura.
 - 2026-09-19 - Criado o esqueleto de `OrderFlow.Worker` e adicionado a solucao. O projeto ainda nao acessa a Outbox nem publica mensagens. A solucao compilou com sucesso e 121 testes unitarios passaram; os testes integrados nao foram revalidados porque o Docker nao estava acessivel, mantendo 197 testes como ultimo snapshot completo.
 - 2026-09-14 - Iniciada a Fase 8: criado `OrderFlow.Contracts`, o evento `OrderDispatched` e a Outbox transacional. A migration cria `outbox_messages` com payload `jsonb` e indice parcial para pendencias; 197 testes aprovados, incluindo sucesso, erro e concorrencia da expedicao.
 - 2026-09-07 - Expedicao integral implementada: `POST /orders/{id}/dispatch` baixa estoque fisico e reserva para pedidos confirmados, registra `DispatchedAt` e usa migration; 196 testes aprovados. Colecao Postman ampliada para 99 requisicoes e 15 endpoints.
