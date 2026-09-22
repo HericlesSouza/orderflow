@@ -397,7 +397,7 @@ OrderFlow.IntegrationTests
 - [x] Registrar tentativas, sucesso e falha do processamento
 - [x] Publicar eventos por uma abstração simples antes da adoção de um broker
 - [x] Testar o `OutboxProcessor`
-- [ ] Testar o `OutboxMessageRepository` com PostgreSQL
+- [x] Testar o `OutboxMessageRepository` com PostgreSQL
 - [ ] Tornar intervalo de polling e tamanho do lote configuráveis
 - [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens inválidas
 - [ ] Adicionar RabbitMQ
