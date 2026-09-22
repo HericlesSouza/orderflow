@@ -14,7 +14,7 @@ internal sealed class OutboxProcessorFixture : IDisposable
     public OutboxProcessorFixture(params PendingOutboxMessage[] messages)
     {
         Repository
-            .Setup(value => value.GetPendingAsync(BatchSize, CancellationToken))
+            .Setup(value => value.GetPendingAsync(It.IsAny<int>(), CancellationToken))
             .ReturnsAsync(messages);
         EventPublisher
             .Setup(value => value.PublishAsync(
@@ -46,9 +46,9 @@ internal sealed class OutboxProcessorFixture : IDisposable
     public Mock<IEventPublisher> EventPublisher { get; } = new();
     public CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
-    public Task ProcessPendingAsync()
+    public Task ProcessPendingAsync(int batchSize = BatchSize)
     {
-        return _processor.ProcessPendingAsync(CancellationToken);
+        return _processor.ProcessPendingAsync(batchSize, CancellationToken);
     }
 
     public void FailPublication(PendingOutboxMessage message, Exception exception)

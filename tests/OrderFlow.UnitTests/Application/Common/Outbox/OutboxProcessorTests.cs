@@ -88,6 +88,19 @@ public sealed class OutboxProcessorTests
     }
 
     [Fact]
+    public async Task Should_Use_Configured_Batch_Size()
+    {
+        const int configuredBatchSize = 50;
+        using var fixture = new OutboxProcessorFixture();
+
+        await fixture.ProcessPendingAsync(configuredBatchSize);
+
+        fixture.Repository.Verify(
+            value => value.GetPendingAsync(configuredBatchSize, fixture.CancellationToken),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task Should_Continue_Processing_When_A_Message_Publication_Fails()
     {
         var failedMessage = CreateMessage("order.failed.v1");
@@ -133,7 +146,8 @@ public sealed class OutboxProcessorTests
         using var fixture = new OutboxProcessorFixture(message);
         fixture.CancelPublication(message);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(fixture.ProcessPendingAsync);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => fixture.ProcessPendingAsync());
 
         fixture.Repository.Verify(
             value => value.MarkProcessedAsync(
@@ -158,7 +172,8 @@ public sealed class OutboxProcessorTests
         using var fixture = new OutboxProcessorFixture(message);
         fixture.FailMarkProcessed(message, exception);
 
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(fixture.ProcessPendingAsync);
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => fixture.ProcessPendingAsync());
 
         Assert.Same(exception, actual);
         fixture.EventPublisher.Verify(

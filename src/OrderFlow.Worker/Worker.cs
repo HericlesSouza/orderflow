@@ -1,9 +1,15 @@
+using Microsoft.Extensions.Options;
 using OrderFlow.Application.Common.Outbox;
 
 namespace OrderFlow.Worker;
 
-public class Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger) : BackgroundService
+public class Worker(
+    IServiceScopeFactory scopeFactory,
+    IOptions<OutboxWorkerOptions> options,
+    ILogger<Worker> logger) : BackgroundService
 {
+    private readonly OutboxWorkerOptions _options = options.Value;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -14,10 +20,10 @@ public class Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger) :
 
                 var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
 
-                await processor.ProcessPendingAsync(stoppingToken);
+                await processor.ProcessPendingAsync(_options.BatchSize, stoppingToken);
 
                 await Task.Delay(
-                    TimeSpan.FromSeconds(5),
+                    _options.PollingInterval,
                     stoppingToken);
             }
             catch (OperationCanceledException)
@@ -32,7 +38,7 @@ public class Worker(IServiceScopeFactory scopeFactory, ILogger<Worker> logger) :
                     "Outbox processing cycle failed.");
 
                 await Task.Delay(
-                    TimeSpan.FromSeconds(5),
+                    _options.PollingInterval,
                     stoppingToken);
             }
         }

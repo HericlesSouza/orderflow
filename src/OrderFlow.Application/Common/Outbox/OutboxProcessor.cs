@@ -8,10 +8,12 @@ public sealed class OutboxProcessor(
     ILogger<OutboxProcessor> logger
 )
 {
-    public async Task ProcessPendingAsync(CancellationToken cancellationToken)
+    public async Task ProcessPendingAsync(
+        int batchSize,
+        CancellationToken cancellationToken)
     {
         var messages = await repository.GetPendingAsync(
-            batchSize: 20,
+            batchSize,
             cancellationToken);
 
         foreach (var message in messages)

@@ -2,10 +2,10 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-09-21
+- Ultima atualizacao: 2026-09-22
 - Fase atual: Fase 8 - Mensageria, com o primeiro processador da Outbox implementado
-- Foco atual: tornar o processamento em background configuravel antes de adicionar RabbitMQ
-- Proximo marco concreto: externalizar intervalo de polling e tamanho do lote para configuracao
+- Foco atual: impedir retentativas agressivas e infinitas antes de adicionar RabbitMQ
+- Proximo marco concreto: adicionar backoff, limite de tentativas e tratamento de mensagens esgotadas
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
@@ -38,7 +38,7 @@ Validacao atual, realizada em 2026-09-21:
 - Testes de integracao: 76 aprovados com PostgreSQL via Testcontainers
 - Testes totais: 197 aprovados
 - Formatacao: verificada com `dotnet format OrderFlow.slnx --verify-no-changes --no-restore`
-- Incrementos posteriores: 7 testes unitarios do `OutboxProcessor` e 7 testes integrados do `OutboxMessageRepository` aprovados em execucoes filtradas; a suite completa nao foi reexecutada nesses incrementos
+- Incrementos posteriores: 8 testes unitarios do `OutboxProcessor` e 7 testes integrados do `OutboxMessageRepository` aprovados em execucoes filtradas; a suite completa nao foi reexecutada nesses incrementos
 
 ## Progresso por Fase
 
@@ -157,7 +157,7 @@ Status: `Em andamento`
 - [x] Publicar eventos por uma abstracao simples antes da adocao de um broker
 - [x] Testar `OutboxProcessor`
 - [x] Testar `OutboxMessageRepository` com PostgreSQL
-- [ ] Tornar intervalo de polling e tamanho do lote configuraveis
+- [x] Tornar intervalo de polling e tamanho do lote configuraveis
 - [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens invalidas
 - [ ] Adicionar RabbitMQ
 - [ ] Evoluir a publicacao e os consumers para MassTransit
@@ -177,11 +177,11 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Tornar intervalo e tamanho do lote configuraveis antes de adicionar RabbitMQ
 - Adicionar backoff, limite de tentativas e dead-letter antes de integrar RabbitMQ
 
 ## Historico de Atualizacoes
 
+- 2026-09-22 - Intervalo de polling e tamanho do lote do Worker externalizados em `OutboxWorkerOptions`, com valores no `appsettings.json` e validacao no startup. O `OutboxProcessor` passou a receber o tamanho do lote explicitamente; 8 testes unitarios especificos foram aprovados em execucao filtrada.
 - 2026-09-21 - Implementada a primeira versao do processador da Outbox no `OrderFlow.Worker`: leitura em lotes, publicador baseado em logs e registro de tentativa, sucesso e falha. Build e suite completa validados com 197 testes aprovados; posteriormente, 7 testes unitarios do `OutboxProcessor` e 7 testes integrados do `OutboxMessageRepository` foram adicionados e aprovados em execucoes filtradas. Configuracao de polling e lote ficou como proximo passo, enquanto concorrencia multi-instancia, backoff, limite de tentativas e dead-letter foram registrados para evolucao futura.
 - 2026-09-19 - Criado o esqueleto de `OrderFlow.Worker` e adicionado a solucao. O projeto ainda nao acessa a Outbox nem publica mensagens. A solucao compilou com sucesso e 121 testes unitarios passaram; os testes integrados nao foram revalidados porque o Docker nao estava acessivel, mantendo 197 testes como ultimo snapshot completo.
 - 2026-09-14 - Iniciada a Fase 8: criado `OrderFlow.Contracts`, o evento `OrderDispatched` e a Outbox transacional. A migration cria `outbox_messages` com payload `jsonb` e indice parcial para pendencias; 197 testes aprovados, incluindo sucesso, erro e concorrencia da expedicao.
