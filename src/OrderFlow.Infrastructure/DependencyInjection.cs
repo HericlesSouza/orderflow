@@ -32,8 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IInventoryItemRepository, InventoryItemRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
-        services.AddScoped<IOutboxMessageWriter, OutboxMessageWriter>();
-        services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         return services;

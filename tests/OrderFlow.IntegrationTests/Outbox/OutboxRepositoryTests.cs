@@ -1,4 +1,8 @@
 using System.Text.Json.Nodes;
+using OrderFlow.Application.Common.Errors;
+using OrderFlow.Application.Common.Results;
+using OrderFlow.Contracts.Events;
+using OrderFlow.Contracts.Events.Orders;
 using OrderFlow.IntegrationTests.Infrastructure;
 
 namespace OrderFlow.IntegrationTests.Outbox;
@@ -6,7 +10,7 @@ namespace OrderFlow.IntegrationTests.Outbox;
 [Collection<OutboxCollection>]
 [Trait("Layer", "Infrastructure")]
 [Trait("Feature", "Outbox")]
-public sealed class OutboxMessageRepositoryTests(
+public sealed class OutboxRepositoryTests(
     OrderFlowIntegrationSuiteFixture environment)
     : FeatureApiTest(environment, IntegrationFeatures.Outbox)
 {
@@ -22,9 +26,98 @@ public sealed class OutboxMessageRepositoryTests(
     private CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task Should_Commit_Different_Event_Types_Only_When_Unit_Of_Work_Succeeds()
+    {
+        await using var fixture = new OutboxRepositoryFixture(Services);
+        var orderId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var dispatchedAt = BaseCreatedAt.AddMinutes(1);
+        var message = new OrderDispatched(orderId, dispatchedAt, [new OrderDispatchedItem(productId, 2)]);
+
+        var result = await fixture.UnitOfWork.ExecuteInTransactionAsync(async cancellationToken =>
+        {
+            fixture.Repository.Add(EventTypes.OrderDispatched, message);
+            fixture.Repository.Add("inventory.adjusted.v1", new { ProductId = productId, Quantity = 3 });
+
+            Assert.Empty(await fixture.Repository.GetPendingAsync(20, cancellationToken));
+
+            return Result<bool>.Success(true);
+        }, CancellationToken);
+
+        Assert.True(result.IsSuccess);
+        var messages = await fixture.Repository.GetPendingAsync(20, CancellationToken);
+        Assert.Equal(2, messages.Count);
+
+        var dispatched = Assert.Single(messages, value => value.EventType == "order.dispatched.v1");
+        var dispatchedPayload = JsonNode.Parse(dispatched.Payload)!;
+        Assert.Equal(orderId, dispatchedPayload["orderId"]!.GetValue<Guid>());
+        Assert.Equal(dispatchedAt, dispatchedPayload["dispatchedAtUtc"]!.GetValue<DateTime>());
+        var item = Assert.Single(dispatchedPayload["items"]!.AsArray())!;
+        Assert.Equal(productId, item["productId"]!.GetValue<Guid>());
+        Assert.Equal(2, item["quantity"]!.GetValue<int>());
+
+        var adjusted = Assert.Single(messages, value => value.EventType == "inventory.adjusted.v1");
+        var adjustedPayload = JsonNode.Parse(adjusted.Payload)!;
+        Assert.Equal(productId, adjustedPayload["productId"]!.GetValue<Guid>());
+        Assert.Equal(3, adjustedPayload["quantity"]!.GetValue<int>());
+
+        foreach (var pending in messages)
+        {
+            var persisted = await fixture.GetByIdAsync(pending.Id, CancellationToken);
+            Assert.NotEqual(Guid.Empty, persisted.Id);
+            Assert.NotEqual(default, persisted.CreatedAt);
+            Assert.Equal(DateTimeKind.Utc, persisted.CreatedAt.Kind);
+            Assert.Equal(0, persisted.AttemptCount);
+            Assert.Null(persisted.ProcessedAt);
+            Assert.Null(persisted.LastAttemptedAt);
+            Assert.Null(persisted.LastError);
+        }
+    }
+
+    [Fact]
+    public async Task Should_Discard_Message_When_Unit_Of_Work_Fails()
+    {
+        await using var fixture = new OutboxRepositoryFixture(Services);
+        var message = new OrderDispatched(Guid.NewGuid(), BaseCreatedAt, []);
+
+        var result = await fixture.UnitOfWork.ExecuteInTransactionAsync(_ =>
+        {
+            fixture.Repository.Add(EventTypes.OrderDispatched, message);
+            return Task.FromResult(Result<bool>.Failure(AppError.Conflict("test.failure", "Simulated failure.")));
+        }, CancellationToken);
+
+        Assert.True(result.IsFailure);
+        Assert.Empty(await fixture.Repository.GetPendingAsync(20, CancellationToken));
+
+        await fixture.UnitOfWork.ExecuteInTransactionAsync(
+            _ => Task.FromResult(Result<bool>.Success(true)), CancellationToken);
+
+        Assert.Empty(await fixture.Repository.GetPendingAsync(20, CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task Should_Reject_Empty_Event_Type(string? eventType)
+    {
+        await using var fixture = new OutboxRepositoryFixture(Services);
+
+        Assert.ThrowsAny<ArgumentException>(() => fixture.Repository.Add(eventType!, new { OrderId = Guid.NewGuid() }));
+    }
+
+    [Fact]
+    public async Task Should_Reject_Null_Message()
+    {
+        await using var fixture = new OutboxRepositoryFixture(Services);
+
+        Assert.Throws<ArgumentNullException>(() => fixture.Repository.Add<OrderDispatched>(EventTypes.OrderDispatched, null!));
+    }
+
+    [Fact]
     public async Task Should_Return_Only_Pending_Messages()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var pendingMessage = CreateMessage(
             eventType: "order.pending.v1",
             payload: "{\"status\":\"pending\"}");
@@ -48,7 +141,7 @@ public sealed class OutboxMessageRepositoryTests(
     [Fact]
     public async Task Should_Return_Pending_Messages_In_Creation_Order()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var firstMessage = CreateMessage(createdAt: BaseCreatedAt);
         var secondMessage = CreateMessage(createdAt: BaseCreatedAt.AddMinutes(1));
         var thirdMessage = CreateMessage(createdAt: BaseCreatedAt.AddMinutes(2));
@@ -66,7 +159,7 @@ public sealed class OutboxMessageRepositoryTests(
     [Fact]
     public async Task Should_Respect_Batch_Size_When_Getting_Pending_Messages()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var firstMessage = CreateMessage(createdAt: BaseCreatedAt);
         var secondMessage = CreateMessage(createdAt: BaseCreatedAt.AddMinutes(1));
         var thirdMessage = CreateMessage(createdAt: BaseCreatedAt.AddMinutes(2));
@@ -84,7 +177,7 @@ public sealed class OutboxMessageRepositoryTests(
     [Fact]
     public async Task Should_Mark_Message_As_Processed()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var previousAttemptAt = BaseCreatedAt.AddMinutes(1);
         var attemptedAt = BaseCreatedAt.AddMinutes(2);
         var message = CreateMessage(
@@ -105,7 +198,7 @@ public sealed class OutboxMessageRepositoryTests(
     [Fact]
     public async Task Should_Mark_Message_As_Failed()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var attemptedAt = BaseCreatedAt.AddMinutes(1);
         var message = CreateMessage();
         await fixture.InsertAsync(message, CancellationToken);
@@ -126,7 +219,7 @@ public sealed class OutboxMessageRepositoryTests(
     [Fact]
     public async Task Should_Accumulate_Attempts_When_Message_Fails_More_Than_Once()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var firstAttemptAt = BaseCreatedAt.AddMinutes(1);
         var secondAttemptAt = BaseCreatedAt.AddMinutes(2);
         var message = CreateMessage();
@@ -153,7 +246,7 @@ public sealed class OutboxMessageRepositoryTests(
     [Fact]
     public async Task Should_Not_Change_Already_Processed_Message()
     {
-        await using var fixture = new OutboxMessageRepositoryFixture(Services);
+        await using var fixture = new OutboxRepositoryFixture(Services);
         var processedAt = BaseCreatedAt.AddMinutes(1);
         var message = CreateMessage(
             processedAt: processedAt,

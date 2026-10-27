@@ -397,7 +397,7 @@ OrderFlow.IntegrationTests
 - [x] Registrar tentativas, sucesso e falha do processamento
 - [x] Publicar eventos por uma abstração simples antes da adoção de um broker
 - [x] Testar o `OutboxProcessor`
-- [x] Testar o `OutboxMessageRepository` com PostgreSQL
+- [x] Testar o `OutboxRepository` com PostgreSQL
 - [x] Tornar intervalo de polling e tamanho do lote configuráveis
 - [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens inválidas
 - [ ] Adicionar RabbitMQ
@@ -482,6 +482,7 @@ Crie todo o sistema completo com arquitetura, testes, RabbitMQ e autenticação.
 - O CLI do Entity Framework será versionado como ferramenta local do repositório.
 - As migrations serão aplicadas explicitamente no preparo do ambiente; a API não alterará o schema automaticamente ao iniciar.
 - O projeto deve priorizar clareza e evolução incremental.
+- A Outbox usa um único `IOutboxRepository` para inclusão e processamento. `Add<TEvent>` recebe o identificador do evento e o contrato tipado; a serialização e a entidade interna `OutboxMessage` ficam na Infrastructure. A inclusão aguarda o commit da unidade de trabalho, enquanto as marcações de processamento executam atualizações diretas no banco. `PendingOutboxMessage` permanece como projeção de leitura, sem DTO adicional de entrada ou dependência do domínio em relação à Outbox.
 
 ## Observações
 

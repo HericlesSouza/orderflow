@@ -3,6 +3,7 @@ using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Application.Common.Results;
 using OrderFlow.Application.Common.Transactions;
 using OrderFlow.Application.Repositories;
+using OrderFlow.Contracts.Events;
 using OrderFlow.Contracts.Events.Orders;
 using OrderFlow.Domain.Entities;
 
@@ -11,7 +12,7 @@ namespace OrderFlow.Application.Orders.Dispatch;
 public sealed class DispatchOrderUseCase(
     IOrderRepository orderRepository,
     IInventoryItemRepository inventoryItemRepository,
-    IOutboxMessageWriter outboxMessageWriter,
+    IOutboxRepository outboxRepository,
     IUnitOfWork unitOfWork)
 {
     public Task<Result<OrderOutput>> ExecuteAsync(Guid orderId, CancellationToken cancellationToken)
@@ -66,7 +67,9 @@ public sealed class DispatchOrderUseCase(
             .OrderBy(item => item.ProductId)
             .Select(item => new OrderDispatchedItem(item.ProductId, item.Quantity))
             .ToArray();
-        outboxMessageWriter.Add(new OrderDispatched(order.Id, order.DispatchedAt!.Value, dispatchedItems));
+        outboxRepository.Add(
+            EventTypes.OrderDispatched,
+            new OrderDispatched(order.Id, order.DispatchedAt!.Value, dispatchedItems));
 
         return Result<OrderOutput>.Success(OrderOutput.FromEntity(order));
     }

@@ -42,7 +42,7 @@ internal sealed class OutboxProcessorFixture : IDisposable
             NullLogger<OutboxProcessor>.Instance);
     }
 
-    public Mock<IOutboxMessageRepository> Repository { get; } = new();
+    public Mock<IOutboxRepository> Repository { get; } = new();
     public Mock<IEventPublisher> EventPublisher { get; } = new();
     public CancellationToken CancellationToken => _cancellationTokenSource.Token;
 

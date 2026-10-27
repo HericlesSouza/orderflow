@@ -2,23 +2,26 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Application.Common.Outbox;
+using OrderFlow.Application.Common.Transactions;
 using OrderFlow.Infrastructure.Persistence;
 
 namespace OrderFlow.IntegrationTests.Outbox;
 
-internal sealed class OutboxMessageRepositoryFixture : IAsyncDisposable
+internal sealed class OutboxRepositoryFixture : IAsyncDisposable
 {
     private readonly AsyncServiceScope _scope;
     private readonly OrderFlowDbContext _dbContext;
 
-    public OutboxMessageRepositoryFixture(IServiceProvider services)
+    public OutboxRepositoryFixture(IServiceProvider services)
     {
         _scope = services.CreateAsyncScope();
         _dbContext = _scope.ServiceProvider.GetRequiredService<OrderFlowDbContext>();
-        Repository = _scope.ServiceProvider.GetRequiredService<IOutboxMessageRepository>();
+        Repository = _scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
+        UnitOfWork = _scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
     }
 
-    public IOutboxMessageRepository Repository { get; }
+    public IOutboxRepository Repository { get; }
+    public IUnitOfWork UnitOfWork { get; }
 
     public async Task InsertAsync(
         OutboxMessageRow message,

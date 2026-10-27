@@ -23,7 +23,7 @@ Resumo atual:
 - Pagamentos: aprovação e rejeição simuladas, com confirmação transacional e manutenção ou liberação das reservas
 - Outbox transacional: expedição grava o evento pendente `OrderDispatched` no mesmo commit do pedido e estoque
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Último snapshot completo validado com 197 testes, incluindo integração com PostgreSQL real
+- Último snapshot completo validado com 218 testes, incluindo integração com PostgreSQL real
 - `OrderFlow.Worker` processa lotes pendentes da Outbox, registra tentativas e usa `LoggingEventPublisher` como destino provisório
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
@@ -217,4 +217,6 @@ docker compose down
 
 ## Notas de aprendizado
 
-O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; a Outbox transacional iniciou a fase de mensageria. O `OrderFlow.Worker` já busca mensagens pendentes em lotes configuráveis, publica por uma abstração inicial baseada em logs e registra tentativas, sucesso e falha. Nesta etapa, `LoggingEventPublisher` é um destino terminal provisório: mensagens marcadas como processadas após o log não serão reenviadas automaticamente quando RabbitMQ for adicionado. O `OutboxProcessor` possui cobertura unitária específica e o `OutboxMessageRepository` possui cobertura integrada com PostgreSQL; os próximos incrementos são adicionar backoff, limite de tentativas e dead-letter e então integrar RabbitMQ e MassTransit. Concorrência entre instâncias, idempotência e observabilidade permanecem mapeadas para a evolução de produção.
+O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; a Outbox transacional iniciou a fase de mensageria. O `OrderFlow.Worker` já busca mensagens pendentes em lotes configuráveis, publica por uma abstração inicial baseada em logs e registra tentativas, sucesso e falha. Nesta etapa, `LoggingEventPublisher` é um destino terminal provisório: mensagens marcadas como processadas após o log não serão reenviadas automaticamente quando RabbitMQ for adicionado. O `OutboxProcessor` possui cobertura unitária específica e o `OutboxRepository` possui cobertura integrada com PostgreSQL; os próximos incrementos são adicionar backoff, limite de tentativas e dead-letter e então integrar RabbitMQ e MassTransit. Concorrência entre instâncias, idempotência e observabilidade permanecem mapeadas para a evolução de produção.
+
+A inclusão e o processamento usam `IOutboxRepository`. O método `Add<TEvent>` recebe o identificador estável do evento e seu contrato tipado; a Infrastructure serializa o payload e prepara a entidade interna `OutboxMessage`, sem salvar antecipadamente. O commit continua sob responsabilidade da unidade de trabalho. Os identificadores públicos ficam em `EventTypes`, no projeto Contracts.

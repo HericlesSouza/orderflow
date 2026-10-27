@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 namespace OrderFlow.Application.Common.Outbox;
 
 public sealed class OutboxProcessor(
-    IOutboxMessageRepository repository,
+    IOutboxRepository repository,
     IEventPublisher eventPublisher,
     ILogger<OutboxProcessor> logger
 )

@@ -1,10 +1,22 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using OrderFlow.Application.Common.Outbox;
 
 namespace OrderFlow.Infrastructure.Persistence.Outbox;
 
-internal class OutboxMessageRepository(OrderFlowDbContext dbContext) : IOutboxMessageRepository
+internal sealed class OutboxRepository(OrderFlowDbContext dbContext) : IOutboxRepository
 {
+    public void Add<TEvent>(string eventType, TEvent message) where TEvent : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
+        ArgumentNullException.ThrowIfNull(message);
+
+        var payload = JsonSerializer.Serialize(message, JsonSerializerOptions.Web);
+        var outboxMessage = OutboxMessage.Create(eventType, payload);
+
+        dbContext.OutboxMessages.Add(outboxMessage);
+    }
+
     public async Task<IReadOnlyList<PendingOutboxMessage>> GetPendingAsync(int batchSize, CancellationToken cancellationToken)
     {
         return await dbContext.OutboxMessages

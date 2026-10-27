@@ -3,6 +3,7 @@ using OrderFlow.Application.Common.Errors;
 using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Application.Orders.Dispatch;
 using OrderFlow.Application.Repositories;
+using OrderFlow.Contracts.Events;
 using OrderFlow.Contracts.Events.Orders;
 using OrderFlow.Domain.Entities;
 using OrderFlow.Domain.Enums;
@@ -27,14 +28,14 @@ public sealed class DispatchOrderUseCaseTests
         var firstInventory = CreateReservedInventory(firstProductId, 5, 2);
         var secondInventory = CreateReservedInventory(secondProductId, 10, 3);
         var unitOfWork = new ImmediateUnitOfWork();
-        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
+        var outboxRepository = new Mock<IOutboxRepository>();
         var expectedItems = new[]
         {
             new OrderDispatchedItem(firstProductId, 2),
             new OrderDispatchedItem(secondProductId, 3)
         }.OrderBy(item => item.ProductId).ToArray();
 
-        var result = await CreateUseCase(order, [firstInventory, secondInventory], unitOfWork, outboxMessageWriter)
+        var result = await CreateUseCase(order, [firstInventory, secondInventory], unitOfWork, outboxRepository)
             .ExecuteAsync(order.Id, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -46,7 +47,7 @@ public sealed class DispatchOrderUseCaseTests
         Assert.Equal(7, secondInventory.Quantity);
         Assert.Equal(0, secondInventory.ReservedQuantity);
         Assert.Equal(1, unitOfWork.ExecutionCount);
-        outboxMessageWriter.Verify(writer => writer.Add(It.Is<OrderDispatched>(message =>
+        outboxRepository.Verify(repository => repository.Add(EventTypes.OrderDispatched, It.Is<OrderDispatched>(message =>
             message.OrderId == order.Id &&
             message.DispatchedAtUtc == order.DispatchedAt!.Value &&
             message.Items.SequenceEqual(expectedItems))), Times.Once);
@@ -55,15 +56,15 @@ public sealed class DispatchOrderUseCaseTests
     [Fact]
     public async Task Should_Return_NotFound_When_Order_Does_Not_Exist()
     {
-        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
+        var outboxRepository = new Mock<IOutboxRepository>();
 
-        var result = await CreateUseCase(null, [], outboxMessageWriter: outboxMessageWriter)
+        var result = await CreateUseCase(null, [], outboxRepository: outboxRepository)
             .ExecuteAsync(Guid.NewGuid(), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal(AppErrorType.NotFound, result.Error!.Type);
         Assert.Equal("order.not_found", result.Error.Code);
-        outboxMessageWriter.Verify(writer => writer.Add(It.IsAny<OrderDispatched>()), Times.Never);
+        outboxRepository.Verify(repository => repository.Add(It.IsAny<string>(), It.IsAny<OrderDispatched>()), Times.Never);
     }
 
     [Theory]
@@ -82,9 +83,9 @@ public sealed class DispatchOrderUseCaseTests
             case OrderStatus.PaymentRejected: order.RejectPayment(); inventory.Release(2); break;
             case OrderStatus.Dispatched: order.ConfirmPayment(); order.Dispatch(); inventory.Dispatch(2); break;
         }
-        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
+        var outboxRepository = new Mock<IOutboxRepository>();
 
-        var result = await CreateUseCase(order, [inventory], outboxMessageWriter: outboxMessageWriter)
+        var result = await CreateUseCase(order, [inventory], outboxRepository: outboxRepository)
             .ExecuteAsync(order.Id, CancellationToken.None);
 
         Assert.True(result.IsFailure);
@@ -92,7 +93,7 @@ public sealed class DispatchOrderUseCaseTests
         Assert.Equal("order.cannot_dispatch", result.Error.Code);
         Assert.Equal(status, order.Status);
         Assert.Equal(status == OrderStatus.PendingPayment ? 2 : 0, inventory.ReservedQuantity);
-        outboxMessageWriter.Verify(writer => writer.Add(It.IsAny<OrderDispatched>()), Times.Never);
+        outboxRepository.Verify(repository => repository.Add(It.IsAny<string>(), It.IsAny<OrderDispatched>()), Times.Never);
     }
 
     [Fact]
@@ -102,9 +103,9 @@ public sealed class DispatchOrderUseCaseTests
         var order = new OrderBuilder().WithItems(new OrderItemBuilder().ForProduct(productId).WithQuantity(2).Build()).Build();
         order.ConfirmPayment();
         var inventory = CreateReservedInventory(productId, 5, 1);
-        var outboxMessageWriter = new Mock<IOutboxMessageWriter>();
+        var outboxRepository = new Mock<IOutboxRepository>();
 
-        var result = await CreateUseCase(order, [inventory], outboxMessageWriter: outboxMessageWriter)
+        var result = await CreateUseCase(order, [inventory], outboxRepository: outboxRepository)
             .ExecuteAsync(order.Id, CancellationToken.None);
 
         Assert.True(result.IsFailure);
@@ -112,14 +113,14 @@ public sealed class DispatchOrderUseCaseTests
         Assert.Equal(OrderStatus.Confirmed, order.Status);
         Assert.Equal(5, inventory.Quantity);
         Assert.Equal(1, inventory.ReservedQuantity);
-        outboxMessageWriter.Verify(writer => writer.Add(It.IsAny<OrderDispatched>()), Times.Never);
+        outboxRepository.Verify(repository => repository.Add(It.IsAny<string>(), It.IsAny<OrderDispatched>()), Times.Never);
     }
 
     private static DispatchOrderUseCase CreateUseCase(
         Order? order,
         IReadOnlyList<InventoryItem> inventoryItems,
         ImmediateUnitOfWork? unitOfWork = null,
-        Mock<IOutboxMessageWriter>? outboxMessageWriter = null)
+        Mock<IOutboxRepository>? outboxRepository = null)
     {
         var orderRepository = new Mock<IOrderRepository>();
         orderRepository.Setup(value => value.GetByIdForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -131,7 +132,7 @@ public sealed class DispatchOrderUseCaseTests
         return new DispatchOrderUseCase(
             orderRepository.Object,
             inventoryRepository.Object,
-            outboxMessageWriter?.Object ?? Mock.Of<IOutboxMessageWriter>(),
+            outboxRepository?.Object ?? Mock.Of<IOutboxRepository>(),
             unitOfWork ?? new ImmediateUnitOfWork());
     }
 

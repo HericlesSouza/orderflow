@@ -1,7 +1,12 @@
 namespace OrderFlow.Application.Common.Outbox;
 
-public interface IOutboxMessageRepository
+public interface IOutboxRepository
 {
+    /// <summary>
+    /// Stages an event for persistence in the current unit of work without committing it.
+    /// </summary>
+    void Add<TEvent>(string eventType, TEvent message) where TEvent : class;
+
     Task<IReadOnlyList<PendingOutboxMessage>> GetPendingAsync(
         int batchSize,
         CancellationToken cancellationToken);
