@@ -2,10 +2,10 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-10-26
+- Ultima atualizacao: 2026-11-08
 - Fase atual: Fase 8 - Mensageria, com o primeiro processador da Outbox implementado
-- Foco atual: impedir retentativas agressivas e infinitas antes de adicionar RabbitMQ
-- Proximo marco concreto: adicionar backoff, limite de tentativas e tratamento de mensagens esgotadas
+- Foco atual: retomar mensageria em pequenos blocos de aprendizagem, mantendo Outbox e publicacao por logs
+- Proximo marco concreto: revisar o fluxo existente e preparar um unico broker local, conforme `MESSAGING_LEARNING_PLAN.md`
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
@@ -22,6 +22,8 @@
   - O preparo de um ambiente novo usa `dotnet-ef` local e aplicacao explicita das migrations
 
 ## Snapshot de Validacao
+
+Validacao da restauracao, realizada em 2026-11-08: `dotnet restore OrderFlow.slnx`, build sem avisos/erros, `dotnet test --solution OrderFlow.slnx --no-build --no-restore` com 218 aprovados (zero falhas/ignorados), `dotnet format OrderFlow.slnx --verify-no-changes --no-restore` e `git diff --check` aprovados. Codigo de producao, testes e Compose restaurados ao commit anterior a integracao RabbitMQ; apenas documentacao de aprendizagem foi acrescentada.
 
 Ultima validacao completa, realizada em 2026-09-14:
 
@@ -186,10 +188,11 @@ Status: `Pendente`
 
 ## Proximos Passos
 
-- Adicionar backoff, limite de tentativas e dead-letter antes de integrar RabbitMQ
+- Seguir `docs/MESSAGING_LEARNING_PLAN.md`, um bloco por vez, com explicacao e revisao antes de avancar. O roteiro nao autoriza implementacao automatica dos proximos blocos.
 
 ## Historico de Atualizacoes
 
+- 2026-11-08 - Descartada, a pedido do usuario, a implementacao ampla nao commitada de RabbitMQ, Inbox, claim/lease e recursos operacionais. Restaurada a base com `OutboxRepository` e `LoggingEventPublisher`. Criado `MESSAGING_LEARNING_PLAN.md` para evolucao acompanhada em pequenos blocos; nenhum bloco novo de codigo foi iniciado.
 - 2026-10-26 - Escrita e processamento da Outbox unificados em `IOutboxRepository`/`OutboxRepository`, removendo o writer separado. `Add<TEvent>` aceita contratos tipados com identificador explicito, mantendo serializacao na Infrastructure e commit pela unidade de trabalho. A entidade interna `OutboxMessage` e a projecao `PendingOutboxMessage` foram preservadas; `EventTypes` centraliza os identificadores em Contracts. Sem alteracao de schema.
 - 2026-09-22 - Intervalo de polling e tamanho do lote do Worker externalizados em `OutboxWorkerOptions`, com valores no `appsettings.json` e validacao no startup. O `OutboxProcessor` passou a receber o tamanho do lote explicitamente; 8 testes unitarios especificos foram aprovados em execucao filtrada.
 - 2026-09-21 - Implementada a primeira versao do processador da Outbox no `OrderFlow.Worker`: leitura em lotes, publicador baseado em logs e registro de tentativa, sucesso e falha. Build e suite completa validados com 197 testes aprovados; posteriormente, 7 testes unitarios do `OutboxProcessor` e 7 testes integrados do `OutboxMessageRepository` foram adicionados e aprovados em execucoes filtradas. Configuracao de polling e lote ficou como proximo passo, enquanto concorrencia multi-instancia, backoff, limite de tentativas e dead-letter foram registrados para evolucao futura.

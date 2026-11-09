@@ -59,6 +59,8 @@ Exemplos de tarefas que nao devem ser feitas sem pedido explicito:
 
 Quando a tarefa envolver aprendizado, explique o raciocinio e me guie para que eu implemente. Se houver mais de uma abordagem possivel, apresente as opcoes com vantagens e desvantagens antes de sugerir uma.
 
+Trabalhe em um unico incremento por vez. Um plano ou roadmap nao autoriza implementar todos os seus blocos. Antes de cada incremento, explique o objetivo e a menor mudanca proposta; por padrao, deixe o usuario escrever o codigo e revise o resultado. Ao concluir, aguarde o usuario escolher o proximo passo. Nao antecipe conceitos, tabelas ou abstracoes sem discutir a necessidade concreta.
+
 ## Stack Principal
 
 - Linguagem: C#
