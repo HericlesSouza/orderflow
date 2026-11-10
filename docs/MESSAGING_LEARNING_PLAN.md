@@ -29,7 +29,9 @@ Comecar com uma fila quorum em um unico broker permite estudar a publicacao, mas
 
 No bloco 2, configuracao e publicador sao suficientes como ponto de partida. Declaracao de topologia e fechamento de recursos podem comecar como metodos privados. Uma classe propria de conexao ou topologia sera avaliada apenas se tornar o codigo mais compreensivel. Metricas e CLI de replay ficam fora desses blocos.
 
-O publicador atual assume uso sequencial, como no Worker existente. Nao adicionar semaforo, estado atomico de descarte ou outros mecanismos de concorrencia antes de existir essa necessidade. Manter o caminho legivel: inicializar conexao/canal/topologia, publicar com confirmacao e liberar recursos no encerramento ou erro. O timeout de publicacao limita a espera de rede e respeita o cancelamento do Worker.
+O publicador atual assume uso sequencial, como no Worker existente. Nao adicionar semaforo, estado atomico de descarte ou outros mecanismos de concorrencia antes de existir essa necessidade. Manter o caminho legivel: inicializar conexao/canal/topologia, publicar com confirmacao e liberar recursos no encerramento ou na inicializacao incompleta. O timeout de publicacao limita a espera de rede e respeita o cancelamento do Worker.
+
+No bloco 3, a recuperacao automatica de conexao e topologia fica habilitada. Falhas de publicacao preservam a conexao para que o cliente possa recupera-la; enquanto isso, a Outbox continua pendente. Um indicador de recuperacao acompanha os eventos de queda e recuperacao completa, evitando publicar enquanto canais e bindings ainda estao sendo restaurados. Esse indicador usa `volatile` porque os eventos da biblioteca rodam em segundo plano; ele nao permite publicar concorrentemente. Falha na primeira conexao ou na inicializacao da topologia limpa os recursos para a proxima tentativa da Outbox. Um canal fechado por erro de protocolo exige reinicializacao, pois o cliente nao o recupera sozinho. A recuperacao nao republica mensagens: o Worker tenta novamente com o mesmo MessageId, e duplicatas continuam possiveis.
 
 ## Evolucoes posteriores, escolhidas separadamente
 

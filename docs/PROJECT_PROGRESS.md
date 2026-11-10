@@ -2,10 +2,10 @@
 
 ## Resumo Atual
 
-- Ultima atualizacao: 2026-11-08
+- Ultima atualizacao: 2026-11-09
 - Fase atual: Fase 8 - Mensageria, com o primeiro processador da Outbox implementado
-- Foco atual: revisar o primeiro fluxo de publicacao da Outbox no RabbitMQ, com um unico broker e sem consumidor
-- Proximo marco concreto: acompanhar uma expedicao ate a fila e estudar falhas de conexao no proximo bloco
+- Foco atual: recuperacao automatica da publicacao RabbitMQ, com um unico broker e sem consumidor
+- Proximo marco concreto: revisar a recuperacao e, em um bloco separado, estudar backoff persistido
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
@@ -22,6 +22,8 @@
   - O preparo de um ambiente novo usa `dotnet-ef` local e aplicacao explicita das migrations
 
 ## Snapshot de Validacao
+
+Recuperacao RabbitMQ validada em 2026-11-09: `dotnet build OrderFlow.slnx --no-restore -m:1 -nodeReuse:false` sem avisos/erros e `dotnet test --solution OrderFlow.slnx --no-restore` com 223 aprovados, zero falhas/ignorados. Tres novos testes integrados verificam falha na conexao inicial, recuperacao automatica antes de nova publicacao e canal fechado por erro de protocolo. As interrupcoes usam `rabbitmqctl stop_app/start_app` no broker efemero, mantendo seu endpoint; a Outbox permanece pendente durante a queda e a publicacao posterior conserva o MessageId. Nenhuma migration ou classe de producao nova.
 
 Publicacao inicial RabbitMQ validada em 2026-11-08: build sem avisos/erros e `dotnet test --solution OrderFlow.slnx --no-restore` com 220 aprovados, zero falhas/ignorados. Os dois novos testes usam broker RabbitMQ e PostgreSQL efemeros e verificam mensagem persistente, MessageId, reutilizacao do publicador, conclusao da Outbox apos confirm e permanencia pendente em caso de return sem rota. Nenhuma migration foi necessaria.
 
@@ -173,6 +175,7 @@ Status: `Em andamento`
 - [x] Tornar intervalo de polling e tamanho do lote configuraveis
 - [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens invalidas
 - [x] Adicionar publicacao RabbitMQ em broker unico com confirms e mandatory (consumo fica para bloco futuro)
+- [x] Recuperar conexao/topologia automaticamente, preservar a Outbox durante indisponibilidade e reinicializar apos erro de canal
 - [ ] Evoluir a publicacao e os consumers para MassTransit
 
 ### Fase 9 - Producao
@@ -194,6 +197,7 @@ Status: `Pendente`
 
 ## Historico de Atualizacoes
 
+- 2026-11-09 - Habilitada recuperacao automatica de conexao e topologia no RabbitMqEventPublisher. Publicacoes com falha preservam a conexao; um indicador acompanha a recuperacao completa. Inicializacao incompleta e erro de protocolo no canal permitem nova inicializacao pela proxima tentativa da Outbox. Tres cenarios integrados adicionados, com 223 testes aprovados na suite completa. Backoff permanece para outro incremento.
 - 2026-11-08 - Implementado, por autorizacao explicita do usuario, o bloco integrado de publicacao com as classes RabbitMqOptions e RabbitMqEventPublisher criadas por ele. O Worker substitui o logger por publicacao persistente com confirms/mandatory e preserva o Id da Outbox como MessageId. Conexao/canal/topologia ficam no proprio publicador; sem consumidor, Inbox, cluster ou claim/lease neste bloco. 220 testes aprovados.
 - 2026-11-08 - Descartada, a pedido do usuario, a implementacao ampla nao commitada de RabbitMQ, Inbox, claim/lease e recursos operacionais. Restaurada a base com `OutboxRepository` e `LoggingEventPublisher`. Criado `MESSAGING_LEARNING_PLAN.md` para evolucao acompanhada em pequenos blocos; nenhum bloco novo de codigo foi iniciado.
 - 2026-10-26 - Escrita e processamento da Outbox unificados em `IOutboxRepository`/`OutboxRepository`, removendo o writer separado. `Add<TEvent>` aceita contratos tipados com identificador explicito, mantendo serializacao na Infrastructure e commit pela unidade de trabalho. A entidade interna `OutboxMessage` e a projecao `PendingOutboxMessage` foram preservadas; `EventTypes` centraliza os identificadores em Contracts. Sem alteracao de schema.

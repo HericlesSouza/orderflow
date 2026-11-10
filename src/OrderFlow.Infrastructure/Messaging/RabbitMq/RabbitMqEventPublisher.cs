@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using OrderFlow.Application.Common.Outbox;
 using OrderFlow.Contracts.Events;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace OrderFlow.Infrastructure.Messaging.RabbitMq;
 
@@ -11,6 +12,8 @@ public sealed class RabbitMqEventPublisher(IOptions<RabbitMqOptions> options) : 
     private readonly RabbitMqOptions _options = options.Value;
     private IConnection? _connection;
     private IChannel? _channel;
+    // Recovery callbacks run in the client background task, while the Worker publishes sequentially.
+    private volatile bool _isRecovering;
 
     public async Task PublishAsync(Guid messageId, string eventType, string payload, CancellationToken cancellationToken)
     {
@@ -42,21 +45,20 @@ public sealed class RabbitMqEventPublisher(IOptions<RabbitMqOptions> options) : 
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            await DisposeAsync();
-            throw new TimeoutException("RabbitMQ did not confirm publication within the configured timeout.");
-        }
-        catch
-        {
-            await DisposeAsync();
-            throw;
+            throw new TimeoutException("RabbitMQ initialization or publication exceeded the configured timeout.");
         }
     }
 
     private async Task InitializeAsync(CancellationToken cancellationToken)
     {
+        // Let the client finish recovering the connection, channels and topology.
+        if (_isRecovering || _connection is { IsOpen: false })
+            throw new InvalidOperationException("RabbitMQ connection is recovering. The Outbox will retry publication.");
+
         if (_channel?.IsOpen == true && _connection?.IsOpen == true)
             return;
 
+        // A channel closed by a protocol error is not recovered automatically.
         await DisposeAsync();
         var factory = new ConnectionFactory
         {
@@ -68,36 +70,60 @@ public sealed class RabbitMqEventPublisher(IOptions<RabbitMqOptions> options) : 
             ClientProvidedName = "orderflow-worker",
             RequestedConnectionTimeout = _options.PublishTimeout,
             ContinuationTimeout = _options.PublishTimeout,
-            AutomaticRecoveryEnabled = false
+            AutomaticRecoveryEnabled = true,
+            TopologyRecoveryEnabled = true
         };
 
-        _connection = await factory.CreateConnectionAsync(cancellationToken);
-        _channel = await _connection.CreateChannelAsync(
-            new CreateChannelOptions(
-                publisherConfirmationsEnabled: true,
-                publisherConfirmationTrackingEnabled: true),
-            cancellationToken);
+        try
+        {
+            _connection = await factory.CreateConnectionAsync(cancellationToken);
+            _connection.ConnectionShutdownAsync += OnConnectionShutdownAsync;
+            _connection.RecoverySucceededAsync += OnRecoverySucceededAsync;
+            _channel = await _connection.CreateChannelAsync(
+                new CreateChannelOptions(
+                    publisherConfirmationsEnabled: true,
+                    publisherConfirmationTrackingEnabled: true),
+                cancellationToken);
 
-        await _channel.ExchangeDeclareAsync(
-            _options.ExchangeName,
-            ExchangeType.Direct,
-            durable: true,
-            autoDelete: false,
-            cancellationToken: cancellationToken);
+            await _channel.ExchangeDeclareAsync(
+                _options.ExchangeName,
+                ExchangeType.Direct,
+                durable: true,
+                autoDelete: false,
+                cancellationToken: cancellationToken);
 
-        await _channel.QueueDeclareAsync(
-            _options.QueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false,
-            arguments: new Dictionary<string, object?> { ["x-queue-type"] = "quorum" },
-            cancellationToken: cancellationToken);
+            await _channel.QueueDeclareAsync(
+                _options.QueueName,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: new Dictionary<string, object?> { ["x-queue-type"] = "quorum" },
+                cancellationToken: cancellationToken);
 
-        await _channel.QueueBindAsync(
-            _options.QueueName,
-            _options.ExchangeName,
-            EventTypes.OrderDispatched,
-            cancellationToken: cancellationToken);
+            await _channel.QueueBindAsync(
+                _options.QueueName,
+                _options.ExchangeName,
+                EventTypes.OrderDispatched,
+                cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            // An incomplete initialization must start again on the next Outbox attempt.
+            await DisposeAsync();
+            throw;
+        }
+    }
+
+    private Task OnConnectionShutdownAsync(object sender, ShutdownEventArgs args)
+    {
+        _isRecovering = true;
+        return Task.CompletedTask;
+    }
+
+    private Task OnRecoverySucceededAsync(object sender, AsyncEventArgs args)
+    {
+        _isRecovering = false;
+        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
@@ -106,6 +132,11 @@ public sealed class RabbitMqEventPublisher(IOptions<RabbitMqOptions> options) : 
         var connection = _connection;
         _channel = null;
         _connection = null;
+        if (connection is not null)
+        {
+            connection.ConnectionShutdownAsync -= OnConnectionShutdownAsync;
+            connection.RecoverySucceededAsync -= OnRecoverySucceededAsync;
+        }
         try
         {
             if (channel is not null)
@@ -115,6 +146,7 @@ public sealed class RabbitMqEventPublisher(IOptions<RabbitMqOptions> options) : 
         {
             if (connection is not null)
                 await connection.DisposeAsync();
+            _isRecovering = false;
         }
     }
 }

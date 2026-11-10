@@ -23,7 +23,7 @@ Resumo atual:
 - Pagamentos: aprovação e rejeição simuladas, com confirmação transacional e manutenção ou liberação das reservas
 - Outbox transacional: expedição grava o evento pendente `OrderDispatched` no mesmo commit do pedido e estoque
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Último snapshot completo validado com 220 testes, incluindo PostgreSQL e publicação confirmada em RabbitMQ reais
+- Último snapshot completo validado com 223 testes, incluindo PostgreSQL, publicação confirmada e recuperação de RabbitMQ reais
 - `OrderFlow.Worker` publica lotes da Outbox no RabbitMQ com confirms, mandatory e MessageId estavel
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
@@ -228,6 +228,8 @@ O roteiro para evoluir a mensageria em pequenos incrementos esta em [MESSAGING_L
 O Worker publica a Outbox no RabbitMQ usando `RabbitMqEventPublisher`. A conexao e o canal sao abertos na primeira publicacao e reutilizados; o publicador declara o exchange direto `orderflow.events`, a fila quorum `orderflow.order-dispatched` e o binding `order.dispatched.v1`. A publicacao e persistente, usa o Id da Outbox como MessageId e aguarda confirmacao do broker com mandatory. Falhas permanecem pendentes na Outbox. Ainda nao ha consumidor, cluster, claim/lease, Inbox ou filas de retry/DLQ; esses conceitos ficam para blocos futuros. Mensagens historicas marcadas como processadas pelo logger nao sao reabertas automaticamente.
 
 A inclusão e o processamento usam `IOutboxRepository`. O método `Add<TEvent>` recebe o identificador estável do evento e seu contrato tipado; a Infrastructure serializa o payload e prepara a entidade interna `OutboxMessage`, sem salvar antecipadamente. O commit continua sob responsabilidade da unidade de trabalho. Os identificadores públicos ficam em `EventTypes`, no projeto Contracts.
+
+A recuperacao automatica de conexao e topologia esta habilitada no cliente RabbitMQ. Durante uma queda, a Outbox permanece pendente e o publisher preserva a conexao para a biblioteca recupera-la. Falha na primeira conexao e canal fechado por erro de protocolo sao tratados na proxima tentativa do Worker. A recuperacao da conexao nao republica mensagens; o Worker continua responsavel por tentar novamente com o mesmo MessageId. Confirmacao perdida ainda pode causar duplicatas.
 
 ### Executar a publicacao no ambiente local
 
