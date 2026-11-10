@@ -14,7 +14,7 @@ public sealed class OutboxProcessorTests
         await fixture.ProcessPendingAsync();
 
         fixture.EventPublisher.Verify(
-            value => value.PublishAsync(message.EventType, message.Payload, fixture.CancellationToken),
+            value => value.PublishAsync(message.Id, message.EventType, message.Payload, fixture.CancellationToken),
             Times.Once);
         fixture.Repository.Verify(
             value => value.MarkProcessedAsync(
@@ -68,6 +68,7 @@ public sealed class OutboxProcessorTests
             Times.Once);
         fixture.EventPublisher.Verify(
             value => value.PublishAsync(
+                It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
@@ -114,12 +115,14 @@ public sealed class OutboxProcessorTests
 
         fixture.EventPublisher.Verify(
             value => value.PublishAsync(
+                failedMessage.Id,
                 failedMessage.EventType,
                 failedMessage.Payload,
                 fixture.CancellationToken),
             Times.Once);
         fixture.EventPublisher.Verify(
             value => value.PublishAsync(
+                successfulMessage.Id,
                 successfulMessage.EventType,
                 successfulMessage.Payload,
                 fixture.CancellationToken),
@@ -177,7 +180,7 @@ public sealed class OutboxProcessorTests
 
         Assert.Same(exception, actual);
         fixture.EventPublisher.Verify(
-            value => value.PublishAsync(message.EventType, message.Payload, fixture.CancellationToken),
+            value => value.PublishAsync(message.Id, message.EventType, message.Payload, fixture.CancellationToken),
             Times.Once);
         fixture.Repository.Verify(
             value => value.MarkFailedAsync(

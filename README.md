@@ -23,8 +23,8 @@ Resumo atual:
 - Pagamentos: aprovação e rejeição simuladas, com confirmação transacional e manutenção ou liberação das reservas
 - Outbox transacional: expedição grava o evento pendente `OrderDispatched` no mesmo commit do pedido e estoque
 - Erros de aplicação traduzidos para `ProblemDetails` com código estável
-- Último snapshot completo validado com 218 testes, incluindo integração com PostgreSQL real
-- `OrderFlow.Worker` processa lotes pendentes da Outbox, registra tentativas e usa `LoggingEventPublisher` como destino provisório
+- Último snapshot completo validado com 220 testes, incluindo PostgreSQL e publicação confirmada em RabbitMQ reais
+- `OrderFlow.Worker` publica lotes da Outbox no RabbitMQ com confirms, mandatory e MessageId estavel
 
 Use `docs/PROJECT_PROGRESS.md` como fonte oficial para saber o que já foi feito, o que está em andamento e o que falta.
 
@@ -50,10 +50,10 @@ Este projeto tem como objetivo praticar e demonstrar:
 - Docker / Docker Compose
 - xUnit v3 com Microsoft Testing Platform
 - Testcontainers
+- RabbitMQ 4.4.0 e RabbitMQ.Client 7.2.2 (publicação em broker único)
 
 Planejado para fases posteriores:
 
-- RabbitMQ
 - MassTransit
 - .NET Aspire
 
@@ -133,6 +133,12 @@ dotnet restore OrderFlow.slnx
 ```
 
 ### 2. Subir o PostgreSQL
+
+Copie `.env.example` para `.env` na raiz do repositorio. Os valores de exemplo sao para desenvolvimento local; o `.env` fica fora do Git. O Compose sobe PostgreSQL e RabbitMQ:
+
+```powershell
+Copy-Item .env.example .env
+```
 
 ```bash
 docker compose up -d
@@ -219,6 +225,10 @@ docker compose down
 
 O roteiro para evoluir a mensageria em pequenos incrementos esta em [MESSAGING_LEARNING_PLAN.md](docs/MESSAGING_LEARNING_PLAN.md). Cada bloco sera explicado e revisado antes de avancar; o plano nao autoriza implementacao automatica.
 
-O projeto evolui em fases. O MVP prioriza um backend funcional, compreensível e testável. Pagamentos simulados e expedição integral já concluem o ciclo principal do pedido; a Outbox transacional iniciou a fase de mensageria. O `OrderFlow.Worker` já busca mensagens pendentes em lotes configuráveis, publica por uma abstração inicial baseada em logs e registra tentativas, sucesso e falha. Nesta etapa, `LoggingEventPublisher` é um destino terminal provisório: mensagens marcadas como processadas após o log não serão reenviadas automaticamente quando RabbitMQ for adicionado. O `OutboxProcessor` possui cobertura unitária específica e o `OutboxRepository` possui cobertura integrada com PostgreSQL; a evolução seguirá o roteiro de aprendizagem, começando pelo broker local e pela publicação confirmada. Retentativas, consumo e demais garantias entrarão em blocos separados. Concorrência entre instâncias, idempotência e observabilidade permanecem mapeadas para a evolução de produção.
+O Worker publica a Outbox no RabbitMQ usando `RabbitMqEventPublisher`. A conexao e o canal sao abertos na primeira publicacao e reutilizados; o publicador declara o exchange direto `orderflow.events`, a fila quorum `orderflow.order-dispatched` e o binding `order.dispatched.v1`. A publicacao e persistente, usa o Id da Outbox como MessageId e aguarda confirmacao do broker com mandatory. Falhas permanecem pendentes na Outbox. Ainda nao ha consumidor, cluster, claim/lease, Inbox ou filas de retry/DLQ; esses conceitos ficam para blocos futuros. Mensagens historicas marcadas como processadas pelo logger nao sao reabertas automaticamente.
 
 A inclusão e o processamento usam `IOutboxRepository`. O método `Add<TEvent>` recebe o identificador estável do evento e seu contrato tipado; a Infrastructure serializa o payload e prepara a entidade interna `OutboxMessage`, sem salvar antecipadamente. O commit continua sob responsabilidade da unidade de trabalho. Os identificadores públicos ficam em `EventTypes`, no projeto Contracts.
+
+### Executar a publicacao no ambiente local
+
+Com RabbitMQ e PostgreSQL ativos, execute `dotnet run --project src/OrderFlow.Worker`. O perfil Development usa guest/guest apenas para o broker local. O processo .NET nao importa o .env do Compose; credenciais diferentes devem ser configuradas por user secrets ou variaveis como RabbitMq__UserName e RabbitMq__Password. Fora de Development, as credenciais sao obrigatorias e nao tem fallback. Para observar o fluxo, expeda um pedido confirmado e veja a mensagem na fila pelo painel em http://localhost:15672. A Outbox deve ter ProcessedAt preenchido somente apos publicacao confirmada. A fila permanece com a mensagem porque este bloco ainda nao inclui consumidor.

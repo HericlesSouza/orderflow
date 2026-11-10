@@ -4,12 +4,24 @@ services:
     container_name: orderflow-postgres
     environment:
       POSTGRES_DB: orderflow
-      POSTGRES_USER: orderflow
-      POSTGRES_PASSWORD: orderflow_dev
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - orderflow_postgres_data:/var/lib/postgresql/data
+  rabbitmq:
+    image: rabbitmq:4.4.0-management
+    hostname: orderflow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - orderflow_rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
   orderflow_postgres_data:
+  orderflow_rabbitmq_data:

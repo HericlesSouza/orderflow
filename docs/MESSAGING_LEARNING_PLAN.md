@@ -2,7 +2,7 @@
 
 ## Ponto de partida
 
-Voltamos ao commit anterior a integracao RabbitMQ: a Outbox e transacional, o `OutboxRepository` aceita eventos tipados com `Add<TEvent>` e o Worker publica por `LoggingEventPublisher`. RabbitMQ, Inbox, claim/lease, replay e metricas adicionais ainda nao fazem parte da implementacao.
+Na restauracao inicial, a Outbox era transacional e o Worker publicava por `LoggingEventPublisher`. Depois da revisao desse fluxo e do broker local, o usuario autorizou o bloco integrado de publicacao: `RabbitMqEventPublisher` e `RabbitMqOptions`, reutilizando a Outbox e sem consumidor. Inbox, claim/lease, cluster, replay e metricas adicionais continuam fora deste incremento.
 
 A implementacao ampla foi descartada antes de ser commitada. Este roteiro substitui aquele plano de entrega unica e complementa a trilha conceitual de `STUDY_PLAN.md`.
 
@@ -28,6 +28,8 @@ A implementacao ampla foi descartada antes de ser commitada. Este roteiro substi
 Comecar com uma fila quorum em um unico broker permite estudar a publicacao, mas nao oferece tolerancia a perda de um no. O cluster entra depois; nao vamos apresentar o ambiente inicial como alta disponibilidade.
 
 No bloco 2, configuracao e publicador sao suficientes como ponto de partida. Declaracao de topologia e fechamento de recursos podem comecar como metodos privados. Uma classe propria de conexao ou topologia sera avaliada apenas se tornar o codigo mais compreensivel. Metricas e CLI de replay ficam fora desses blocos.
+
+O publicador atual assume uso sequencial, como no Worker existente. Nao adicionar semaforo, estado atomico de descarte ou outros mecanismos de concorrencia antes de existir essa necessidade. Manter o caminho legivel: inicializar conexao/canal/topologia, publicar com confirmacao e liberar recursos no encerramento ou erro. O timeout de publicacao limita a espera de rede e respeita o cancelamento do Worker.
 
 ## Evolucoes posteriores, escolhidas separadamente
 

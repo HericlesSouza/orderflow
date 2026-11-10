@@ -4,8 +4,8 @@
 
 - Ultima atualizacao: 2026-11-08
 - Fase atual: Fase 8 - Mensageria, com o primeiro processador da Outbox implementado
-- Foco atual: retomar mensageria em pequenos blocos de aprendizagem, mantendo Outbox e publicacao por logs
-- Proximo marco concreto: revisar o fluxo existente e preparar um unico broker local, conforme `MESSAGING_LEARNING_PLAN.md`
+- Foco atual: revisar o primeiro fluxo de publicacao da Outbox no RabbitMQ, com um unico broker e sem consumidor
+- Proximo marco concreto: acompanhar uma expedicao ate a fila e estudar falhas de conexao no proximo bloco
 - Pagamentos: `POST /payments/{orderId}/approve` confirma pedidos pendentes mantendo reservas; `POST /payments/{orderId}/reject` libera reservas atomicamente, sem migration ou entidade Payment.
 - Erros de pagamento: `404 order.not_found`, `409 payment.order_not_pending` e, para reserva inconsistente na rejeicao, `409 order.inventory_inconsistent`.
 - Estado real da solucao:
@@ -13,7 +13,7 @@
   - Application implementada hoje: fluxos de Products e Inventory, criacao, consulta, cancelamento e expedicao de pedidos, pagamentos simulados e registro do evento `OrderDispatched` na Outbox
   - Infrastructure implementada hoje: persistencia de Products, Inventory, Orders, OrderItems e mensagens de Outbox, com unidade de trabalho e bloqueio de linhas de pedido e estoque durante fluxos transacionais
   - Contracts implementado hoje: contrato publico `OrderDispatched` com pedido, instante UTC de expedicao e itens enviados
-  - Worker implementado hoje: `OrderFlow.Worker` consulta ate 20 mensagens pendentes por ciclo, publica por uma abstracao baseada em logs e registra tentativa, sucesso e falha
+  - Worker implementado hoje: `OrderFlow.Worker` consulta ate 20 mensagens pendentes por ciclo, publica no RabbitMQ com confirms/mandatory e MessageId estavel e registra tentativa, sucesso e falha
   - Limitacao conhecida: o processamento atual pressupoe uma unica instancia do Worker e ainda nao possui claim/lease, backoff, limite de tentativas ou dead-letter
   - A solucao possui tratamento centralizado de erros com `AppError`, `Result<T>` tipado, traducao HTTP por tipo e codigo estavel em `ProblemDetails`
   - A criacao de pedido preserva o preco do momento da compra e grava pedido, itens e reservas em uma unica transacao; cancelamento, rejeicao e expedicao atualizam pedido e reservas na mesma transacao
@@ -22,6 +22,8 @@
   - O preparo de um ambiente novo usa `dotnet-ef` local e aplicacao explicita das migrations
 
 ## Snapshot de Validacao
+
+Publicacao inicial RabbitMQ validada em 2026-11-08: build sem avisos/erros e `dotnet test --solution OrderFlow.slnx --no-restore` com 220 aprovados, zero falhas/ignorados. Os dois novos testes usam broker RabbitMQ e PostgreSQL efemeros e verificam mensagem persistente, MessageId, reutilizacao do publicador, conclusao da Outbox apos confirm e permanencia pendente em caso de return sem rota. Nenhuma migration foi necessaria.
 
 Validacao da restauracao, realizada em 2026-11-08: `dotnet restore OrderFlow.slnx`, build sem avisos/erros, `dotnet test --solution OrderFlow.slnx --no-build --no-restore` com 218 aprovados (zero falhas/ignorados), `dotnet format OrderFlow.slnx --verify-no-changes --no-restore` e `git diff --check` aprovados. Codigo de producao, testes e Compose restaurados ao commit anterior a integracao RabbitMQ; apenas documentacao de aprendizagem foi acrescentada.
 
@@ -170,7 +172,7 @@ Status: `Em andamento`
 - [x] Testar `OutboxRepository` com PostgreSQL
 - [x] Tornar intervalo de polling e tamanho do lote configuraveis
 - [ ] Adicionar backoff, limite de tentativas e dead-letter para evitar bloqueio por mensagens invalidas
-- [ ] Adicionar RabbitMQ
+- [x] Adicionar publicacao RabbitMQ em broker unico com confirms e mandatory (consumo fica para bloco futuro)
 - [ ] Evoluir a publicacao e os consumers para MassTransit
 
 ### Fase 9 - Producao
@@ -192,6 +194,7 @@ Status: `Pendente`
 
 ## Historico de Atualizacoes
 
+- 2026-11-08 - Implementado, por autorizacao explicita do usuario, o bloco integrado de publicacao com as classes RabbitMqOptions e RabbitMqEventPublisher criadas por ele. O Worker substitui o logger por publicacao persistente com confirms/mandatory e preserva o Id da Outbox como MessageId. Conexao/canal/topologia ficam no proprio publicador; sem consumidor, Inbox, cluster ou claim/lease neste bloco. 220 testes aprovados.
 - 2026-11-08 - Descartada, a pedido do usuario, a implementacao ampla nao commitada de RabbitMQ, Inbox, claim/lease e recursos operacionais. Restaurada a base com `OutboxRepository` e `LoggingEventPublisher`. Criado `MESSAGING_LEARNING_PLAN.md` para evolucao acompanhada em pequenos blocos; nenhum bloco novo de codigo foi iniciado.
 - 2026-10-26 - Escrita e processamento da Outbox unificados em `IOutboxRepository`/`OutboxRepository`, removendo o writer separado. `Add<TEvent>` aceita contratos tipados com identificador explicito, mantendo serializacao na Infrastructure e commit pela unidade de trabalho. A entidade interna `OutboxMessage` e a projecao `PendingOutboxMessage` foram preservadas; `EventTypes` centraliza os identificadores em Contracts. Sem alteracao de schema.
 - 2026-09-22 - Intervalo de polling e tamanho do lote do Worker externalizados em `OutboxWorkerOptions`, com valores no `appsettings.json` e validacao no startup. O `OutboxProcessor` passou a receber o tamanho do lote explicitamente; 8 testes unitarios especificos foram aprovados em execucao filtrada.

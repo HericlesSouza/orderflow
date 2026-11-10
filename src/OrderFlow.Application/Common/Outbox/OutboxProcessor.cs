@@ -23,6 +23,7 @@ public sealed class OutboxProcessor(
             try
             {
                 await eventPublisher.PublishAsync(
+                    messageId: message.Id,
                     eventType: message.EventType,
                     payload: message.Payload,
                     cancellationToken);

@@ -68,6 +68,7 @@ Trabalhe em um unico incremento por vez. Um plano ou roadmap nao autoriza implem
 - API: ASP.NET Core
 - Banco de dados: PostgreSQL
 - ORM: Entity Framework Core
+- Mensageria: RabbitMQ 4.4.0 e RabbitMQ.Client 7.2.2; publicacao confirmada em broker unico, sem consumidor
 - Testes: xUnit ou ferramenta definida no projeto
 - Containerizacao: Docker e Docker Compose
 

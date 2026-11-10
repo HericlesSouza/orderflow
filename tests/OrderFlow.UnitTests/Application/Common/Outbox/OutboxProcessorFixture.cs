@@ -18,6 +18,7 @@ internal sealed class OutboxProcessorFixture : IDisposable
             .ReturnsAsync(messages);
         EventPublisher
             .Setup(value => value.PublishAsync(
+                It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 CancellationToken))
@@ -55,6 +56,7 @@ internal sealed class OutboxProcessorFixture : IDisposable
     {
         EventPublisher
             .Setup(value => value.PublishAsync(
+                message.Id,
                 message.EventType,
                 message.Payload,
                 CancellationToken))
@@ -65,6 +67,7 @@ internal sealed class OutboxProcessorFixture : IDisposable
     {
         EventPublisher
             .Setup(value => value.PublishAsync(
+                message.Id,
                 message.EventType,
                 message.Payload,
                 CancellationToken))
